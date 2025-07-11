@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
@@ -12,15 +13,37 @@ namespace SPTCoffeeModManager;
 /// </summary>
 public partial class MainWindow
 {
-    private readonly string _modsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "user", "mods");
+    private readonly string? _modsFolder;
+    private readonly string? _clientPath;
 
     public MainWindow()
     {
+        try
+        {
+            var exePath = Process.GetCurrentProcess().MainModule.FileName;
+            var exeDir = Path.GetDirectoryName(exePath)!;
+            _modsFolder = Path.Combine(exeDir, "user", "mods");
+            _clientPath = Path.Combine(exeDir, "SPT.Launcher.exe");
+        }
+        catch
+        {
+            MessageBox.Show("SPT.Launcher.exe not found. Please ensure it is in the same directory as this application.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            Close();
+            return;
+        }
+
         InitializeComponent();
         Loaded += async (_, _) =>
         {
+            // Check if the client executable exists
+            if (!File.Exists(_clientPath))
+            {
+                MessageBox.Show("SPT.Launcher.exe not found. Please ensure it is in the same directory as this application.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Close();
+                return;
+            }
+
             await RefreshMods();
-            //await LoadModList();
         };
     }
 
@@ -117,10 +140,18 @@ public partial class MainWindow
 
     private bool ModsMatch(List<ModEntry> serverMods, List<ModEntry> localMods)
     {
+        // Check if all server mods exist locally and are up to date
         foreach (var serverMod in serverMods)
         {
             var match = localMods.FirstOrDefault(m => m.Name == serverMod.Name);
             if (match == null || match.Version != serverMod.Version)
+                return false;
+        }
+
+        // Check if there are any local mods not present on the server (should be removed)
+        foreach (var localMod in localMods)
+        {
+            if (serverMods.All(m => m.Name != localMod.Name))
                 return false;
         }
 
@@ -155,7 +186,13 @@ public partial class MainWindow
                 .Where(mod => mod.Status == "Update" || mod.Status == "Not downloaded")
                 .ToList();
 
+            var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
+                .Where(mod => mod.Status == "Removed")
+                .ToList();
+
             var allModsUpdated = await DownloadAndUpdateMods(modsToDownload);
+
+            await RemoveOldModsAsync(modsToRemove);
 
             StatusTextBlock.Text = allModsUpdated ? "All mods updated successfully." : "Some mods failed to update. Check logs for details.";
             StatusTextBlock.Foreground = allModsUpdated ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
@@ -171,9 +208,55 @@ public partial class MainWindow
         }
         else
         {
-            MessageBox.Show("Launching SPT...");
-            // your game/server launch logic
+            LaunchTheGame();
         }
+    }
+
+    private async Task RemoveOldModsAsync(List<ModStatusEntry> modsToRemove)
+    {
+        foreach (var modFolderName in modsToRemove)
+        {
+            try
+            {
+                // Use the folder name directly for removal
+                if (!string.IsNullOrEmpty(modFolderName.FolderName) && !string.IsNullOrWhiteSpace(modFolderName.FolderName) && _modsFolder != null)
+                {
+                    string modPath = Path.Combine(_modsFolder, modFolderName.FolderName);
+                    if (Directory.Exists(modPath))
+                    {
+                        await Task.Run(() => Directory.Delete(modPath, true));
+                        Debug.WriteLine($"Removed old mod folder: {modFolderName}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"Mod folder {modFolderName} not found for removal.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = $"Failed to remove {modFolderName}: {ex.Message}";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                Debug.WriteLine($"Error removing mod folder {modFolderName}: {ex.Message}");
+            }
+        }
+    }
+
+    private void LaunchTheGame()
+    {
+        // Check if the client executable exists
+        if (!File.Exists(_clientPath))
+        {
+            MessageBox.Show("SPT.Launcher.exe not found. Please ensure it is in the same directory as this application.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = _clientPath,
+            WorkingDirectory = Path.GetDirectoryName(_clientPath),
+            UseShellExecute = true
+        });
     }
 
     // Download and update mods based on the provided list
