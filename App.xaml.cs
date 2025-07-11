@@ -9,5 +9,20 @@ namespace SPTCoffeeModManager;
 /// </summary>
 public partial class App : Application
 {
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        bool isUpdateAvailable = await UpdaterService.IsUpdateAvailableAsync();
+        if (isUpdateAvailable)
+        {
+            var updateWindow = new UpdateWindow();
+            updateWindow.Show();
+            return;
+        }
+
+        var mainWindow = new MainWindow();
+        mainWindow.Show();
+    }
 }
 

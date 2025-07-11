@@ -35,38 +35,6 @@ public partial class MainWindow
         InitializeComponent();
         Loaded += async (_, _) =>
         {
-            // Check for updates
-            bool isUpdateAvailable = await UpdaterService.IsUpdateAvailableAsync();
-            if (isUpdateAvailable)
-            {
-                var result = MessageBox.Show(
-                    "An update is available for SPT Coffee Mod Manager. Please update to the latest version.",
-                    "Update Available",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Information);
-
-                // Handle user response
-                if (result == MessageBoxResult.Yes)
-                {
-                    // Update the application
-                    try
-                    {
-                        await UpdaterService.CheckAndUpdateAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Failed to update: {ex.Message}", "Update Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
-                    return;
-                }
-                if (result == MessageBoxResult.No)
-                {
-                    // Close the application
-                    Close();
-                    return;
-                }
-            }
-
             // Check if the client executable exists
             if (!File.Exists(_clientPath))
             {
