@@ -1,0 +1,99 @@
+﻿<Window x:Class="SPTCoffeeModManager.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="SPT Coffee Mod Manager" Height="450" Width="750"
+        ResizeMode="NoResize"
+        Background="#1e1e1e" Foreground="White"
+        WindowStyle="None">
+    <Grid Margin="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#232323" Height="40" MouseDown="Header_MouseDown" Margin="0,0,0,10">
+            <Grid>
+                <TextBlock Text="SPT Coffee Mod Manager"
+                           FontSize="24"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="White" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <Button Content="—" Width="30" Height="30" Margin="0,0,5,0"
+                            Click="MinimizeButton_Click"
+                            Background="Transparent" Foreground="White" BorderBrush="Transparent" />
+                    <Button Content="✕" Width="30" Height="30"
+                            Click="CloseButton_Click"
+                            Background="Transparent" Foreground="White" BorderBrush="Transparent" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main content -->
+        <StackPanel Grid.Row="1" Margin="5">
+            <!-- Server Status -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center" >
+                <TextBlock Text="Server Status: " FontWeight="Bold" Foreground="White" FontSize="18" Margin="0,0,8,0" />
+                <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="Gray" FontSize="18" />
+            </StackPanel>
+
+            <!-- Mods Overview -->
+            <GroupBox Header="Mod Status" Margin="0,0,0,5"
+                      Background="#252526" Foreground="White" BorderBrush="#3c3c3c">
+                <ListView Name="ModListView" Height="250" Background="#1e1e1e" Foreground="White" BorderBrush="#3c3c3c" Margin="0,10,0,0">
+                    <ListView.Resources>
+                        <!-- Style for coloring rows based on Status -->
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Background" Value="#1e1e1e" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Status}" Value="Up to date">
+                                    <Setter Property="Background" Value="#213d2f" /> <!-- Dark green -->
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Update">
+                                    <Setter Property="Background" Value="#522900" /> <!-- Dark orange -->
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Not downloaded">
+                                    <Setter Property="Background" Value="#3a3a1e" /> <!-- Dark yellow -->
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Removed">
+                                    <Setter Property="Background" Value="#3d2b2b" /> <!-- Dark red -->
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                        <!-- Style for column headers -->
+                        <Style TargetType="GridViewColumnHeader">
+                            <Setter Property="Background" Value="#232323"/>
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="BorderBrush" Value="#3c3c3c"/>
+                        </Style>
+                    </ListView.Resources>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Mod Name" Width="300" DisplayMemberBinding="{Binding Name}" />
+                            <GridViewColumn Header="Local Version" Width="100" DisplayMemberBinding="{Binding LocalVersion}" />
+                            <GridViewColumn Header="Server Version" Width="100" DisplayMemberBinding="{Binding ServerVersion}" />
+                            <GridViewColumn Header="Status" Width="150" DisplayMemberBinding="{Binding Status}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </GroupBox>
+        </StackPanel>
+
+        <!-- Action Buttons -->
+        <Grid Grid.Row="2" Margin="0,10,10,10" Height="30">
+            <TextBlock Name="StatusTextBlock" Text="" VerticalAlignment="Center" Foreground="White" FontSize="15" Margin="10,0,0,0" HorizontalAlignment="Left" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Name="CheckUpdatesButton" Content="Check Updates" Width="120" Margin="0,0,10,0"
+                        Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="CheckUpdates_Click" />
+                <Button Name="LaunchOrUpdateButton" Content="Play" Width="120"
+                        Background="#057328" Foreground="White" BorderBrush="#3c3c3c" Click="LaunchOrUpdate_Click" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
