@@ -19,23 +19,23 @@ public class UpdaterService
         var json = await http.GetStringAsync(UpdateJsonUrl);
         var updateInfo = JsonSerializer.Deserialize<UpdateInfo>(json);
 
-        var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
-        var latestVersion = new Version(updateInfo.Version);
-
-        if (latestVersion <= currentVersion) return;
+        if (!await IsUpdateAvailableAsync())
+            return;
 
         // Download update zip
         var tempZip = Path.Combine(Path.GetTempPath(), "ModManagerUpdate.zip");
         using var stream = await http.GetStreamAsync(updateInfo.Url);
-        using var file = File.Create(tempZip);
-        await stream.CopyToAsync(file);
+        using (var file = File.Create(tempZip))
+        {
+            await stream.CopyToAsync(file);
+        }
 
         // Extract and overwrite
+        var exePath = Process.GetCurrentProcess().MainModule.FileName;
         string baseDir = AppContext.BaseDirectory;
         ZipFile.ExtractToDirectory(tempZip, baseDir, overwriteFiles: true);
 
         // Restart app
-        string exePath = Path.Combine(baseDir, Path.GetFileName(Process.GetCurrentProcess().MainModule.FileName));
         Process.Start(exePath);
         Environment.Exit(0);
     }
