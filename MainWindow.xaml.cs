@@ -49,9 +49,9 @@ public partial class MainWindow
 
     private static readonly string[] ServerUrls =
     [
-        "https://sptmodmanager.veskeli.org/mods.json",              // Public domain
-        "http://192.168.1.109:25569/mods.json",                // LAN address (change this)
-        "http://localhost:25569/mods.json" // Same machine
+        "https://sptmodmanager.veskeli.org/mods.json",          // Public domain
+        "http://192.168.1.109:25569/mods.json",                 // LAN address (change this)
+        "http://localhost:25569/mods.json"                      // Same machine
     ];
 
     private async Task<List<ModEntry>> GetServerModsAsync()
@@ -315,13 +315,14 @@ public partial class MainWindow
                 // Decide target folder (use FolderName if provided)
                 string targetFolderName = !string.IsNullOrEmpty(mod.FolderName) ? mod.FolderName : mod.Name;
                 string targetPath = Path.Combine(_modsFolder, targetFolderName);
+                string oldConfigPath = Path.Combine(targetPath, "config");
+                string tempConfigPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_config_backup");
 
-                // Remove old mod folder if it's different from target
-                if (!string.IsNullOrEmpty(mod.FolderName) && mod.FolderName != mod.Name)
+                if (Directory.Exists(oldConfigPath))
                 {
-                    string oldPath = Path.Combine(_modsFolder, mod.Name);
-                    if (Directory.Exists(oldPath))
-                        Directory.Delete(oldPath, true);
+                    if (Directory.Exists(tempConfigPath))
+                        Directory.Delete(tempConfigPath, true);
+                    MoveDirectory(oldConfigPath, tempConfigPath);
                 }
 
                 if (Directory.Exists(targetPath))
@@ -338,6 +339,13 @@ public partial class MainWindow
                     File.Copy(filePath, destinationPath, overwrite: true);
                 }
 
+                // Restore config if it was moved
+                if (Directory.Exists(tempConfigPath))
+                {
+                    MoveDirectory(tempConfigPath, Path.Combine(targetPath, "config"));
+                }
+
+                // Clean up temp files
                 Directory.Delete(extractTempPath, true);
 
                 // After successful update:
@@ -352,6 +360,8 @@ public partial class MainWindow
                 StatusTextBlock.Text = $"Failed to download {mod.Name}: {ex.Message}";
                 StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
                 Debug.WriteLine($"Error updating mod {mod.Name}: {ex.Message}");
+                // Show box
+                MessageBox.Show($"Failed to update {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -444,6 +454,32 @@ public partial class MainWindow
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         this.Close();
+    }
+
+    public static void MoveDirectory(string sourceDir, string destDir)
+    {
+        if (Path.GetPathRoot(sourceDir) == Path.GetPathRoot(destDir))
+        {
+            Directory.Move(sourceDir, destDir);
+        }
+        else
+        {
+            CopyDirectory(sourceDir, destDir);
+            Directory.Delete(sourceDir, true);
+        }
+    }
+
+    public static void CopyDirectory(string sourceDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
+        }
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            CopyDirectory(dir, Path.Combine(destDir, Path.GetFileName(dir)));
+        }
     }
 }
 
