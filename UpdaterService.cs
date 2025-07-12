@@ -14,16 +14,21 @@ public class UpdaterService
 {
     private const string UpdateJsonUrl = "https://raw.githubusercontent.com/veskeli/SPTCoffeeModManager/main/latest.json";
 
-    public static async Task CheckAndUpdateAsync()
+    public static async Task CheckAndUpdateAsync(Action<string> updateStatus)
     {
         using var http = new HttpClient();
+        updateStatus?.Invoke("Fetching update information...");
         var json = await http.GetStringAsync(UpdateJsonUrl);
         var updateInfo = JsonSerializer.Deserialize<UpdateInfo>(json);
 
         if (!await IsUpdateAvailableAsync())
+        {
+            updateStatus?.Invoke("No updates available.");
             return;
+        }
 
         // Download update zip
+        updateStatus?.Invoke($"Downloading update version {updateInfo.Version}...");
         var tempZip = Path.Combine(Path.GetTempPath(), "ModManagerUpdate.zip");
         using (var stream = await http.GetStreamAsync(updateInfo.Url))
         using (var file = File.Create(tempZip))
@@ -32,6 +37,7 @@ public class UpdaterService
         }
 
         // Launch updater and exit
+        updateStatus?.Invoke("Launching updater...");
         var exePath = Process.GetCurrentProcess().MainModule.FileName;
         var baseDir = Path.GetDirectoryName(exePath)!;
         var updaterExe = Path.Combine(baseDir, "CoffeeUpdater.exe");

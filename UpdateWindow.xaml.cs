@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -37,7 +38,10 @@ public partial class UpdateWindow : Window
 
         try
         {
-            await UpdaterService.CheckAndUpdateAsync();
+            await UpdaterService.CheckAndUpdateAsync(status =>
+            {
+                Dispatcher.Invoke(() => StatusText.Text = status);
+            });
         }
         catch (Exception ex)
         {
@@ -45,5 +49,11 @@ public partial class UpdateWindow : Window
             StatusText.Foreground = new SolidColorBrush(Colors.Red);
             MessageBox.Show($"Failed to check for updates: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    public void SetStatusText(string text)
+    {
+        StatusText.Text = text;
+        StatusText.Foreground = new SolidColorBrush(Colors.White);
     }
 }
