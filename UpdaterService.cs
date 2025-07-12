@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using System.Windows;
 
 namespace SPTCoffeeModManager;
 
@@ -24,19 +25,33 @@ public class UpdaterService
 
         // Download update zip
         var tempZip = Path.Combine(Path.GetTempPath(), "ModManagerUpdate.zip");
-        using var stream = await http.GetStreamAsync(updateInfo.Url);
+        using (var stream = await http.GetStreamAsync(updateInfo.Url))
         using (var file = File.Create(tempZip))
         {
             await stream.CopyToAsync(file);
         }
 
-        // Extract and overwrite
+        // Launch updater and exit
         var exePath = Process.GetCurrentProcess().MainModule.FileName;
-        string baseDir = AppContext.BaseDirectory;
-        ZipFile.ExtractToDirectory(tempZip, baseDir, overwriteFiles: true);
+        var baseDir = Path.GetDirectoryName(exePath)!;
+        var updaterExe = Path.Combine(baseDir, "CoffeeUpdater.exe");
 
-        // Restart app
-        Process.Start(exePath);
+        if (!File.Exists(updaterExe))
+        {
+            MessageBox.Show("CoffeeUpdater.exe not found. Please make sure it's in the same folder as the mod manager.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = updaterExe,
+            Arguments = $"\"{baseDir}\" \"{tempZip}\" \"{Path.GetFileName(exePath)}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
+
+        Process.Start(startInfo);
         Environment.Exit(0);
     }
 
