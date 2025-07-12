@@ -6,8 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Version>0.0.3</Version>
-    <FileVersion>0.0.3</FileVersion>
+    <ApplicationIcon>Assets\CoffeeIcon.ico</ApplicationIcon>
+    <Version>0.0.4</Version>
+    <FileVersion>0.0.4</FileVersion>
   </PropertyGroup>
 
 </Project>
