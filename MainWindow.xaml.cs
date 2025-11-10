@@ -21,6 +21,10 @@ public partial class MainWindow
     private string ServerIP = "127.0.0.1";
     private int ServerPort = 25569;
 
+    // store exe directory and config path
+    private readonly string _exeDir;
+    private readonly string _configPath;
+
     public MainWindow()
     {
         try
@@ -28,6 +32,10 @@ public partial class MainWindow
             var exeDir = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName)!;
             _modsFolder = Path.Combine(exeDir, "user", "mods");
             _clientPath = Path.Combine(exeDir, "SPT", "SPT.Launcher.exe");
+
+            // store exe directory and config path
+            _exeDir = exeDir;
+            _configPath = Path.Combine(_exeDir, "coffee_manager_server_config.json");
         }
         catch
         {
@@ -37,6 +45,10 @@ public partial class MainWindow
         }
 
         InitializeComponent();
+
+        // Load saved server config if present
+        LoadConfig();
+
         Loaded += async (_, _) =>
         {
             if (!File.Exists(_clientPath))
@@ -187,13 +199,42 @@ public partial class MainWindow
                 var tempZip = Path.Combine(Path.GetTempPath(), $"{mod.Name}.zip");
                 await File.WriteAllBytesAsync(tempZip, data);
 
-                // Extract
-                var extractPath = Path.Combine(_modsFolder, mod.Name);
+                // Extract to a temp folder
+                var extractPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_extract_{Guid.NewGuid():N}");
                 if (Directory.Exists(extractPath))
                     Directory.Delete(extractPath, true);
 
                 ZipFile.ExtractToDirectory(tempZip, extractPath);
                 File.Delete(tempZip);
+
+                // Determine `BepInEx/Plugins` folder (assumes `_clientPath` is `...\\SPT\\SPT.Launcher.exe`)
+                var sptDir = Path.GetDirectoryName(_clientPath)!;
+                var exeDir = Path.GetDirectoryName(sptDir)!;
+                var pluginsDir = Path.Combine(exeDir, "BepInEx", "Plugins");
+                Directory.CreateDirectory(pluginsDir);
+
+                // Move extracted folder contents into `BepInEx/Plugins`
+                foreach (var entry in Directory.GetFileSystemEntries(extractPath))
+                {
+                    var name = Path.GetFileName(entry);
+                    var destPath = Path.Combine(pluginsDir, name);
+
+                    if (Directory.Exists(entry))
+                    {
+                        if (Directory.Exists(destPath))
+                            Directory.Delete(destPath, true);
+                        Directory.Move(entry, destPath);
+                    }
+                    else if (File.Exists(entry))
+                    {
+                        if (File.Exists(destPath))
+                            File.Delete(destPath);
+                        File.Move(entry, destPath);
+                    }
+                }
+
+                if (Directory.Exists(extractPath))
+                    Directory.Delete(extractPath, true);
 
                 mod.Status = "Up to date";
             }
@@ -262,14 +303,76 @@ public partial class MainWindow
 
     private void CheckServerButton_Click(object sender, RoutedEventArgs e)
     {
+        // Set status to checking
+        ServerStatusText.Text = "Checking...";
+        ServerStatusText.Foreground = System.Windows.Media.Brushes.Yellow;
+        // Refresh mods to check server status
+        _ = RefreshMods();
+    }
+
+    private void ConfigureServerButton_Click(object sender, RoutedEventArgs e)
+    {
         var serverConfigWindow = new ServerConfigWindow(ServerIP, ServerPort);
         if (serverConfigWindow.ShowDialog() == true)
         {
             ServerIP = serverConfigWindow.ServerIP;
             ServerPort = serverConfigWindow.ServerPort;
+
+            // Save updated config to exe folder
+            SaveConfig();
+
             _ = RefreshMods();
         }
     }
+
+    // new: load config from file
+    private void LoadConfig()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_configPath) || !File.Exists(_configPath))
+                return;
+
+            var json = File.ReadAllText(_configPath);
+            var cfg = JsonSerializer.Deserialize<AppConfig>(json);
+            if (cfg != null)
+            {
+                if (!string.IsNullOrWhiteSpace(cfg.ServerIP))
+                    ServerIP = cfg.ServerIP;
+                if (cfg.ServerPort > 0)
+                    ServerPort = cfg.ServerPort;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to load config: {ex.Message}");
+        }
+    }
+
+    // new: save config to file
+    private void SaveConfig()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_configPath))
+                return;
+
+            var cfg = new AppConfig { ServerIP = ServerIP, ServerPort = ServerPort };
+            var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_configPath, json);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to save config: {ex.Message}");
+        }
+    }
+}
+
+// new: simple config DTO
+public class AppConfig
+{
+    public string? ServerIP { get; set; }
+    public int ServerPort { get; set; }
 }
 
 public class ModEntry
@@ -285,4 +388,3 @@ public class ModStatusEntry
     public required string ServerVersion { get; set; }
     public string? Status { get; set; }
 }
-
