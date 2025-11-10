@@ -20,10 +20,14 @@ public partial class MainWindow
     {
         try
         {
-            var exePath = Process.GetCurrentProcess().MainModule.FileName;
-            var exeDir = Path.GetDirectoryName(exePath)!;
-            _modsFolder = Path.Combine(exeDir, "user", "mods");
-            _clientPath = Path.Combine(exeDir, "SPT.Launcher.exe");
+            var processModule = Process.GetCurrentProcess().MainModule;
+            if (processModule != null)
+            {
+                var exePath = processModule.FileName;
+                var exeDir = Path.GetDirectoryName(exePath)!;
+                _modsFolder = Path.Combine(exeDir, "user", "mods");
+                _clientPath = Path.Combine(exeDir, "SPT.Launcher.exe");
+            }
         }
         catch
         {
@@ -50,6 +54,7 @@ public partial class MainWindow
     private static readonly string[] ServerUrls =
     [
         "https://sptmodmanager.veskeli.org/mods.json",          // Public domain
+        "https://sptmodmanager.veskeli.org:25569/mods.json",    // Public domain 2
         "http://192.168.1.109:25569/mods.json",                 // LAN address (change this)
         "http://localhost:25569/mods.json"                      // Same machine
     ];
@@ -177,38 +182,50 @@ public partial class MainWindow
 
     private async void LaunchOrUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (LaunchOrUpdateButton.Content.ToString() == "Update")
+        try
         {
-            LaunchOrUpdateButton.IsEnabled = false;
-            StatusTextBlock.Text = "Downloading updates...";
+            if (LaunchOrUpdateButton.Content.ToString() == "Update")
+            {
+                LaunchOrUpdateButton.IsEnabled = false;
+                StatusTextBlock.Text = "Downloading updates...";
 
-            var modsToDownload = ((List<ModStatusEntry>)ModListView.ItemsSource)
-                .Where(mod => mod.Status == "Update" || mod.Status == "Not downloaded")
-                .ToList();
+                var modsToDownload = ((List<ModStatusEntry>)ModListView.ItemsSource)
+                    .Where(mod => mod.Status == "Update" || mod.Status == "Not downloaded")
+                    .ToList();
 
-            var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
-                .Where(mod => mod.Status == "Removed")
-                .ToList();
+                var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
+                    .Where(mod => mod.Status == "Removed")
+                    .ToList();
 
-            var allModsUpdated = await DownloadAndUpdateMods(modsToDownload);
+                var allModsUpdated = await DownloadAndUpdateMods(modsToDownload);
 
-            await RemoveOldModsAsync(modsToRemove);
+                await RemoveOldModsAsync(modsToRemove);
 
-            StatusTextBlock.Text = allModsUpdated ? "All mods updated successfully." : "Some mods failed to update. Check logs for details.";
-            StatusTextBlock.Foreground = allModsUpdated ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
+                StatusTextBlock.Text = allModsUpdated ? "All mods updated successfully." : "Some mods failed to update. Check logs for details.";
+                StatusTextBlock.Foreground = allModsUpdated ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
 
-            LaunchOrUpdateButton.Content = allModsUpdated ? "Play" : "Update";
-            LaunchOrUpdateButton.IsEnabled = true;
+                LaunchOrUpdateButton.Content = allModsUpdated ? "Play" : "Update";
+                LaunchOrUpdateButton.IsEnabled = true;
 
-            // Refresh mod list
-            var serverMods = await GetServerModsAsync();
-            var localMods = GetLocalMods();
-            var statusList = CompareMods(serverMods, localMods);
-            ModListView.ItemsSource = statusList;
+                // Refresh mod list
+                var serverMods = await GetServerModsAsync();
+                var localMods = GetLocalMods();
+                var statusList = CompareMods(serverMods, localMods);
+                ModListView.ItemsSource = statusList;
+            }
+            else
+            {
+                LaunchTheGame();
+            }
         }
-        else
+        catch (Exception errorMessage)
         {
-            LaunchTheGame();
+            // Log and show error
+            StatusTextBlock.Text = $"Error: {errorMessage.Message}";
+            StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            Debug.WriteLine($"Error in LaunchOrUpdate_Click: {errorMessage.Message}");
+            // Also show msg box
+            MessageBox.Show($"An error occurred while updating mods: {errorMessage.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -278,7 +295,7 @@ public partial class MainWindow
                 using var httpClient = new HttpClient();
 
                 var data = await httpClient.GetByteArrayAsync(mod.DownloadUrl);
-                File.WriteAllBytes(tempPath, data);
+                await File.WriteAllBytesAsync(tempPath, data);
 
                 StatusTextBlock.Text = $"Extracting {mod.Name}...";
 
@@ -314,35 +331,38 @@ public partial class MainWindow
 
                 // Decide target folder (use FolderName if provided)
                 string targetFolderName = !string.IsNullOrEmpty(mod.FolderName) ? mod.FolderName : mod.Name;
-                string targetPath = Path.Combine(_modsFolder, targetFolderName);
-                string oldConfigPath = Path.Combine(targetPath, "config");
-                string tempConfigPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_config_backup");
-
-                if (Directory.Exists(oldConfigPath))
+                if (_modsFolder != null)
                 {
+                    string targetPath = Path.Combine(_modsFolder, targetFolderName);
+                    string oldConfigPath = Path.Combine(targetPath, "config");
+                    string tempConfigPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_config_backup");
+
+                    if (Directory.Exists(oldConfigPath))
+                    {
+                        if (Directory.Exists(tempConfigPath))
+                            Directory.Delete(tempConfigPath, true);
+                        MoveDirectory(oldConfigPath, tempConfigPath);
+                    }
+
+                    if (Directory.Exists(targetPath))
+                        Directory.Delete(targetPath, true);
+
+                    Directory.CreateDirectory(targetPath);
+
+                    // Copy files to final mod folder
+                    foreach (var filePath in Directory.GetFiles(correctModPath, "*", SearchOption.AllDirectories))
+                    {
+                        var relativePath = Path.GetRelativePath(correctModPath, filePath);
+                        var destinationPath = Path.Combine(targetPath, relativePath);
+                        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                        File.Copy(filePath, destinationPath, overwrite: true);
+                    }
+
+                    // Restore config if it was moved
                     if (Directory.Exists(tempConfigPath))
-                        Directory.Delete(tempConfigPath, true);
-                    MoveDirectory(oldConfigPath, tempConfigPath);
-                }
-
-                if (Directory.Exists(targetPath))
-                    Directory.Delete(targetPath, true);
-
-                Directory.CreateDirectory(targetPath);
-
-                // Copy files to final mod folder
-                foreach (var filePath in Directory.GetFiles(correctModPath, "*", SearchOption.AllDirectories))
-                {
-                    var relativePath = Path.GetRelativePath(correctModPath, filePath);
-                    var destinationPath = Path.Combine(targetPath, relativePath);
-                    Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-                    File.Copy(filePath, destinationPath, overwrite: true);
-                }
-
-                // Restore config if it was moved
-                if (Directory.Exists(tempConfigPath))
-                {
-                    MoveDirectory(tempConfigPath, Path.Combine(targetPath, "config"));
+                    {
+                        MoveDirectory(tempConfigPath, Path.Combine(targetPath, "config"));
+                    }
                 }
 
                 // Clean up temp files

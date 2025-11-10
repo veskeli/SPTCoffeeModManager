@@ -21,6 +21,12 @@ public class UpdaterService
         var json = await http.GetStringAsync(UpdateJsonUrl);
         var updateInfo = JsonSerializer.Deserialize<UpdateInfo>(json);
 
+        if(updateInfo == null)
+        {
+            updateStatus?.Invoke("Failed to parse update information.");
+            return;
+        }
+
         if (!await IsUpdateAvailableAsync())
         {
             updateStatus?.Invoke("No updates available.");
@@ -30,34 +36,39 @@ public class UpdaterService
         // Download update zip
         updateStatus?.Invoke($"Downloading update version {updateInfo.Version}...");
         var tempZip = Path.Combine(Path.GetTempPath(), "ModManagerUpdate.zip");
-        using (var stream = await http.GetStreamAsync(updateInfo.Url))
-        using (var file = File.Create(tempZip))
+        await using (var stream = await http.GetStreamAsync(updateInfo.Url))
+        await using (var file = File.Create(tempZip))
         {
             await stream.CopyToAsync(file);
         }
 
         // Launch updater and exit
         updateStatus?.Invoke("Launching updater...");
-        var exePath = Process.GetCurrentProcess().MainModule.FileName;
-        var baseDir = Path.GetDirectoryName(exePath)!;
-        var updaterExe = Path.Combine(baseDir, "CoffeeUpdater.exe");
-
-        if (!File.Exists(updaterExe))
+        var processModule = Process.GetCurrentProcess().MainModule;
+        if (processModule != null)
         {
-            MessageBox.Show("CoffeeUpdater.exe not found. Please make sure it's in the same folder as the mod manager.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
+            var exePath = processModule.FileName;
+            var baseDir = Path.GetDirectoryName(exePath)!;
+            var updaterExe = Path.Combine(baseDir, "CoffeeUpdater.exe");
+
+            if (!File.Exists(updaterExe))
+            {
+                MessageBox.Show("CoffeeUpdater.exe not found. Please make sure it's in the same folder as the mod manager.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = updaterExe,
+                Arguments = $"\"{baseDir}\" \"{tempZip}\" \"{Path.GetFileName(exePath)}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+
+            Process.Start(startInfo);
         }
 
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = updaterExe,
-            Arguments = $"\"{baseDir}\" \"{tempZip}\" \"{Path.GetFileName(exePath)}\"",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            WindowStyle = ProcessWindowStyle.Hidden
-        };
-
-        Process.Start(startInfo);
         Environment.Exit(0);
     }
 
@@ -97,8 +108,8 @@ public class UpdaterService
     private class UpdateInfo
     {
         [JsonPropertyName("version")]
-        public string Version { get; set; }
+        public required string Version { get; init; }
         [JsonPropertyName("url")]
-        public string Url { get; set; }
+        public required string Url { get; init; }
     }
 }
