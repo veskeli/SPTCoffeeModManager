@@ -7,8 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\CoffeeIcon.ico</ApplicationIcon>
-    <Version>0.0.5</Version>
-    <FileVersion>0.0.5</FileVersion>
+    <Version>0.0.6</Version>
+    <FileVersion>0.0.6</FileVersion>
   </PropertyGroup>
 
 </Project>

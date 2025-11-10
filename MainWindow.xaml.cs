@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
@@ -13,25 +14,24 @@ namespace SPTCoffeeModManager;
 /// </summary>
 public partial class MainWindow
 {
-    private readonly string? _modsFolder;
-    private readonly string? _clientPath;
+    private readonly string _modsFolder;
+    private readonly string _clientPath;
+
+    // IP/Port of your server console
+    private string ServerIP = "127.0.0.1";
+    private int ServerPort = 25569;
 
     public MainWindow()
     {
         try
         {
-            var processModule = Process.GetCurrentProcess().MainModule;
-            if (processModule != null)
-            {
-                var exePath = processModule.FileName;
-                var exeDir = Path.GetDirectoryName(exePath)!;
-                _modsFolder = Path.Combine(exeDir, "user", "mods");
-                _clientPath = Path.Combine(exeDir, "SPT.Launcher.exe");
-            }
+            var exeDir = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName)!;
+            _modsFolder = Path.Combine(exeDir, "user", "mods");
+            _clientPath = Path.Combine(exeDir, "SPT", "SPT.Launcher.exe");
         }
         catch
         {
-            MessageBox.Show("SPT.Launcher.exe not found. Please ensure it is in the same directory as this application.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("SPT.Launcher.exe not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             Close();
             return;
         }
@@ -39,10 +39,9 @@ public partial class MainWindow
         InitializeComponent();
         Loaded += async (_, _) =>
         {
-            // Check if the client executable exists
             if (!File.Exists(_clientPath))
             {
-                MessageBox.Show("SPT.Launcher.exe not found. Please ensure it is in the same directory as this application.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("SPT.Launcher.exe not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Close();
                 return;
             }
@@ -51,54 +50,59 @@ public partial class MainWindow
         };
     }
 
-    private static readonly string[] ServerUrls =
-    [
-        "https://sptmodmanager.veskeli.org/mods.json",          // Public domain
-        "https://sptmodmanager.veskeli.org:25569/mods.json",    // Public domain 2
-        "http://192.168.1.109:25569/mods.json",                 // LAN address (change this)
-        "http://localhost:25569/mods.json"                      // Same machine
-    ];
+    private string BaseUrl => $"http://{ServerIP}:{ServerPort}";
 
     private async Task<List<ModEntry>> GetServerModsAsync()
     {
         using var client = new HttpClient();
+        try
+        {
+            var response = await client.GetStringAsync($"{BaseUrl}/mods");
+            var mods = JsonSerializer.Deserialize<List<ModEntry>>(response)!;
+            return mods ?? new List<ModEntry>();
+        }
+        catch
+        {
+            return new List<ModEntry>();
+        }
+    }
 
-        foreach (var url in ServerUrls)
+    private List<ModEntry> GetLocalMods()
+    {
+        var mods = new List<ModEntry>();
+        if (!Directory.Exists(_modsFolder)) return mods;
+
+        foreach (var dll in Directory.GetFiles(_modsFolder, "*.dll"))
         {
             try
             {
-                var response = await client.GetStringAsync(url);
-                var mods = JsonSerializer.Deserialize<List<ModEntry>>(response, new JsonSerializerOptions
+                var fileVersion = FileVersionInfo.GetVersionInfo(dll).FileVersion ?? "0";
+                mods.Add(new ModEntry
                 {
-                    PropertyNameCaseInsensitive = true
+                    Name = Path.GetFileNameWithoutExtension(dll),
+                    Version = fileVersion
                 });
-
-                if (mods != null && mods.Any())
-                    return mods;
             }
-            catch(Exception ex)
-            {
-                Debug.WriteLine($"Failed to connect to {url}: {ex.Message}");
-            }
+            catch { }
         }
 
-        return new List<ModEntry>();
+        return mods;
     }
 
     private async Task RefreshMods()
     {
         LaunchOrUpdateButton.IsEnabled = false;
+
         var serverMods = await GetServerModsAsync();
         var localMods = GetLocalMods();
 
         if (serverMods.Count == 0)
         {
-            ServerStatusText.Text = "Server Offline or Unreachable";
+            ServerStatusText.Text = "Server Offline";
             ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
             return;
         }
 
-        // Set button state based on mod match
         ServerStatusText.Text = "Server Online";
         ServerStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
 
@@ -110,57 +114,114 @@ public partial class MainWindow
         LaunchOrUpdateButton.IsEnabled = true;
     }
 
-    private List<ModEntry> GetLocalMods()
+    private List<ModStatusEntry> CompareMods(List<ModEntry> serverMods, List<ModEntry> localMods)
     {
-        var result = new List<ModEntry>();
+        var statusList = new List<ModStatusEntry>();
 
-        if (!Directory.Exists(_modsFolder)) return result;
+        var localDict = localMods.ToDictionary(m => m.Name, m => m);
 
-        foreach (var dir in Directory.GetDirectories(_modsFolder))
+        foreach (var serverMod in serverMods)
         {
-            var packagePath = Path.Combine(dir, "package.json");
-            if (File.Exists(packagePath))
-            {
-                try
-                {
-                    var json = File.ReadAllText(packagePath);
-                    using var doc = JsonDocument.Parse(json);
-                    var name = doc.RootElement.GetProperty("name").GetString();
-                    var version = doc.RootElement.GetProperty("version").GetString();
-                    var folderName = Path.GetFileName(dir);
+            localDict.TryGetValue(serverMod.Name, out var localMod);
+            var status = (localMod != null && localMod.Version == serverMod.Version) ? "Up to date" : "Update";
 
-                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(version))
-                    {
-                        result.Add(new ModEntry { Name = name, Version = version, FolderName = folderName });
-                    }
-                }
-                catch
-                {
-                    Console.WriteLine($"Failed to parse package.json in {dir}");
-                }
-            }
+            statusList.Add(new ModStatusEntry
+            {
+                Name = serverMod.Name,
+                LocalVersion = localMod?.Version ?? "-",
+                ServerVersion = serverMod.Version,
+                Status = status
+            });
         }
-        return result;
+
+        return statusList;
     }
 
     private bool ModsMatch(List<ModEntry> serverMods, List<ModEntry> localMods)
     {
-        // Check if all server mods exist locally and are up to date
         foreach (var serverMod in serverMods)
         {
-            var match = localMods.FirstOrDefault(m => m.Name == serverMod.Name);
-            if (match == null || match.Version != serverMod.Version)
+            var localMod = localMods.FirstOrDefault(m => m.Name == serverMod.Name);
+            if (localMod == null || localMod.Version != serverMod.Version)
                 return false;
         }
-
-        // Check if there are any local mods not present on the server (should be removed)
-        foreach (var localMod in localMods)
-        {
-            if (serverMods.All(m => m.Name != localMod.Name))
-                return false;
-        }
-
         return true;
+    }
+
+    private async void LaunchOrUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (LaunchOrUpdateButton.Content.ToString() == "Update")
+        {
+            LaunchOrUpdateButton.IsEnabled = false;
+            StatusTextBlock.Text = "Updating mods...";
+            var modsToUpdate = ((List<ModStatusEntry>)ModListView.ItemsSource)
+                .Where(m => m.Status == "Update")
+                .ToList();
+
+            var allUpdated = await DownloadAndUpdateMods(modsToUpdate);
+            StatusTextBlock.Text = allUpdated ? "All mods updated" : "Some mods failed";
+            LaunchOrUpdateButton.Content = "Launch";
+            LaunchOrUpdateButton.IsEnabled = true;
+
+            await RefreshMods();
+        }
+        else
+        {
+            LaunchTheGame();
+        }
+    }
+
+    private async Task<bool> DownloadAndUpdateMods(List<ModStatusEntry> mods)
+    {
+        bool success = true;
+        using var client = new HttpClient();
+
+        foreach (var mod in mods)
+        {
+            try
+            {
+                var url = $"{BaseUrl}/mods/{mod.Name}";
+                var data = await client.GetByteArrayAsync(url);
+
+                // Save temp zip
+                var tempZip = Path.Combine(Path.GetTempPath(), $"{mod.Name}.zip");
+                await File.WriteAllBytesAsync(tempZip, data);
+
+                // Extract
+                var extractPath = Path.Combine(_modsFolder, mod.Name);
+                if (Directory.Exists(extractPath))
+                    Directory.Delete(extractPath, true);
+
+                ZipFile.ExtractToDirectory(tempZip, extractPath);
+                File.Delete(tempZip);
+
+                mod.Status = "Up to date";
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to update {mod.Name}: {ex.Message}");
+                success = false;
+            }
+        }
+
+        ModListView.Items.Refresh();
+        return success;
+    }
+
+    private void LaunchTheGame()
+    {
+        if (!File.Exists(_clientPath))
+        {
+            MessageBox.Show("SPT.Launcher.exe not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = _clientPath,
+            UseShellExecute = true,
+            WorkingDirectory = Path.GetDirectoryName(_clientPath)
+        });
     }
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
@@ -178,283 +239,6 @@ public partial class MainWindow
         await Task.Delay(1000); // 1 second cooldown
         CheckUpdatesButton.Content = "Check for Updates";
         CheckUpdatesButton.IsEnabled = true;
-    }
-
-    private async void LaunchOrUpdate_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            if (LaunchOrUpdateButton.Content.ToString() == "Update")
-            {
-                LaunchOrUpdateButton.IsEnabled = false;
-                StatusTextBlock.Text = "Downloading updates...";
-
-                var modsToDownload = ((List<ModStatusEntry>)ModListView.ItemsSource)
-                    .Where(mod => mod.Status == "Update" || mod.Status == "Not downloaded")
-                    .ToList();
-
-                var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
-                    .Where(mod => mod.Status == "Removed")
-                    .ToList();
-
-                var allModsUpdated = await DownloadAndUpdateMods(modsToDownload);
-
-                await RemoveOldModsAsync(modsToRemove);
-
-                StatusTextBlock.Text = allModsUpdated ? "All mods updated successfully." : "Some mods failed to update. Check logs for details.";
-                StatusTextBlock.Foreground = allModsUpdated ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
-
-                LaunchOrUpdateButton.Content = allModsUpdated ? "Play" : "Update";
-                LaunchOrUpdateButton.IsEnabled = true;
-
-                // Refresh mod list
-                var serverMods = await GetServerModsAsync();
-                var localMods = GetLocalMods();
-                var statusList = CompareMods(serverMods, localMods);
-                ModListView.ItemsSource = statusList;
-            }
-            else
-            {
-                LaunchTheGame();
-            }
-        }
-        catch (Exception errorMessage)
-        {
-            // Log and show error
-            StatusTextBlock.Text = $"Error: {errorMessage.Message}";
-            StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
-            Debug.WriteLine($"Error in LaunchOrUpdate_Click: {errorMessage.Message}");
-            // Also show msg box
-            MessageBox.Show($"An error occurred while updating mods: {errorMessage.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private async Task RemoveOldModsAsync(List<ModStatusEntry> modsToRemove)
-    {
-        foreach (var modFolderName in modsToRemove)
-        {
-            try
-            {
-                // Use the folder name directly for removal
-                if (!string.IsNullOrEmpty(modFolderName.FolderName) && !string.IsNullOrWhiteSpace(modFolderName.FolderName) && _modsFolder != null)
-                {
-                    string modPath = Path.Combine(_modsFolder, modFolderName.FolderName);
-                    if (Directory.Exists(modPath))
-                    {
-                        await Task.Run(() => Directory.Delete(modPath, true));
-                        Debug.WriteLine($"Removed old mod folder: {modFolderName}");
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"Mod folder {modFolderName} not found for removal.");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusTextBlock.Text = $"Failed to remove {modFolderName}: {ex.Message}";
-                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
-                Debug.WriteLine($"Error removing mod folder {modFolderName}: {ex.Message}");
-            }
-        }
-    }
-
-    private void LaunchTheGame()
-    {
-        // Check if the client executable exists
-        if (!File.Exists(_clientPath))
-        {
-            MessageBox.Show("SPT.Launcher.exe not found. Please ensure it is in the same directory as this application.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = _clientPath,
-            WorkingDirectory = Path.GetDirectoryName(_clientPath),
-            UseShellExecute = true
-        });
-    }
-
-    // Download and update mods based on the provided list
-    // Also deletes old mods if found (Ones not in the server list)
-    private async Task<bool> DownloadAndUpdateMods(List<ModStatusEntry> modsToDownload)
-    {
-        bool allModsUpdated = true;
-        foreach (var mod in modsToDownload)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(mod.DownloadUrl))
-                    throw new Exception($"No download URL for mod {mod.Name}");
-
-                StatusTextBlock.Text = $"Downloading {mod.Name}...";
-                StatusTextBlock.Foreground = System.Windows.Media.Brushes.LightBlue;
-
-                string tempPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}.zip");
-                using var httpClient = new HttpClient();
-
-                var data = await httpClient.GetByteArrayAsync(mod.DownloadUrl);
-                await File.WriteAllBytesAsync(tempPath, data);
-
-                StatusTextBlock.Text = $"Extracting {mod.Name}...";
-
-                // Extract to temp
-                string extractTempPath = Path.Combine(Path.GetTempPath(), $"mod_extract_{Guid.NewGuid()}");
-                Directory.CreateDirectory(extractTempPath);
-                System.IO.Compression.ZipFile.ExtractToDirectory(tempPath, extractTempPath);
-                File.Delete(tempPath);
-
-                // Detect actual mod folder inside extracted data
-                string correctModPath = string.Empty;
-
-                // Case 1: root contains package.json
-                if (File.Exists(Path.Combine(extractTempPath, "package.json")))
-                {
-                    correctModPath = extractTempPath;
-                }
-                else
-                {
-                    var potentialDirs = Directory.GetDirectories(extractTempPath, "*", SearchOption.AllDirectories);
-                    foreach (var dir in potentialDirs)
-                    {
-                        if (File.Exists(Path.Combine(dir, "package.json")))
-                        {
-                            correctModPath = dir;
-                            break;
-                        }
-                    }
-                }
-
-                if (correctModPath == null)
-                    throw new Exception("Mod archive did not contain a valid mod folder with package.json");
-
-                // Decide target folder (use FolderName if provided)
-                string targetFolderName = !string.IsNullOrEmpty(mod.FolderName) ? mod.FolderName : mod.Name;
-                if (_modsFolder != null)
-                {
-                    string targetPath = Path.Combine(_modsFolder, targetFolderName);
-                    string oldConfigPath = Path.Combine(targetPath, "config");
-                    string tempConfigPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_config_backup");
-
-                    if (Directory.Exists(oldConfigPath))
-                    {
-                        if (Directory.Exists(tempConfigPath))
-                            Directory.Delete(tempConfigPath, true);
-                        MoveDirectory(oldConfigPath, tempConfigPath);
-                    }
-
-                    if (Directory.Exists(targetPath))
-                        Directory.Delete(targetPath, true);
-
-                    Directory.CreateDirectory(targetPath);
-
-                    // Copy files to final mod folder
-                    foreach (var filePath in Directory.GetFiles(correctModPath, "*", SearchOption.AllDirectories))
-                    {
-                        var relativePath = Path.GetRelativePath(correctModPath, filePath);
-                        var destinationPath = Path.Combine(targetPath, relativePath);
-                        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-                        File.Copy(filePath, destinationPath, overwrite: true);
-                    }
-
-                    // Restore config if it was moved
-                    if (Directory.Exists(tempConfigPath))
-                    {
-                        MoveDirectory(tempConfigPath, Path.Combine(targetPath, "config"));
-                    }
-                }
-
-                // Clean up temp files
-                Directory.Delete(extractTempPath, true);
-
-                // After successful update:
-                mod.Status = "Up to date";
-                mod.LocalVersion = mod.ServerVersion;
-                // Refresh the ListView to reflect the change
-                ModListView.Items.Refresh();
-            }
-            catch (Exception ex)
-            {
-                allModsUpdated = false;
-                StatusTextBlock.Text = $"Failed to download {mod.Name}: {ex.Message}";
-                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
-                Debug.WriteLine($"Error updating mod {mod.Name}: {ex.Message}");
-                // Show box
-                MessageBox.Show($"Failed to update {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        return allModsUpdated;
-    }
-
-    private List<ModStatusEntry> CompareMods(List<ModEntry> serverMods, List<ModEntry> localMods)
-    {
-        var statusList = new List<ModStatusEntry>();
-
-        // Filter out mods with null or empty names to avoid exception
-        var serverDict = serverMods
-            .Where(m => !string.IsNullOrWhiteSpace(m.Name))
-            .ToDictionary(m => m.Name, m => m);
-
-        var localDict = localMods
-            .Where(m => !string.IsNullOrWhiteSpace(m.Name))
-            .ToDictionary(m => m.Name, m => m);
-
-        // Mods that exist on server
-        foreach (var serverMod in serverMods)
-        {
-            if (string.IsNullOrWhiteSpace(serverMod.Name))
-                continue;
-
-            if (localDict.TryGetValue(serverMod.Name, out var localMod))
-            {
-                var status = localMod.Version == serverMod.Version ? "Up to date" : "Update";
-                statusList.Add(new ModStatusEntry
-                {
-                    Name = serverMod.Name,
-                    LocalVersion = localMod.Version,
-                    ServerVersion = serverMod.Version,
-                    Status = status,
-                    DownloadUrl = serverMod.DownloadUrl ?? String.Empty,
-                    FolderName = localMod.FolderName // Preserve folder name for manual mods
-                });
-            }
-            else
-            {
-                statusList.Add(new ModStatusEntry
-                {
-                    Name = serverMod.Name,
-                    LocalVersion = "-",
-                    ServerVersion = serverMod.Version,
-                    Status = "Not downloaded",
-                    DownloadUrl = serverMod.DownloadUrl ?? String.Empty,
-                    FolderName = String.Empty // No folder name for not downloaded mods
-                });
-            }
-        }
-
-        // Mods that exist locally but not on server (removed)
-        foreach (var localMod in localMods)
-        {
-            if (string.IsNullOrWhiteSpace(localMod.Name))
-                continue;
-
-            if (!serverDict.ContainsKey(localMod.Name))
-            {
-                statusList.Add(new ModStatusEntry
-                {
-                    Name = localMod.Name,
-                    LocalVersion = localMod.Version,
-                    ServerVersion = "-",
-                    Status = "Removed",
-                    DownloadUrl = String.Empty, // No download URL for removed mods
-                    FolderName = localMod.FolderName // Preserve folder name for manual mods
-                });
-            }
-        }
-
-        return statusList;
     }
 
     // Make the window draggable
@@ -476,29 +260,14 @@ public partial class MainWindow
         this.Close();
     }
 
-    public static void MoveDirectory(string sourceDir, string destDir)
+    private void CheckServerButton_Click(object sender, RoutedEventArgs e)
     {
-        if (Path.GetPathRoot(sourceDir) == Path.GetPathRoot(destDir))
+        var serverConfigWindow = new ServerConfigWindow(ServerIP, ServerPort);
+        if (serverConfigWindow.ShowDialog() == true)
         {
-            Directory.Move(sourceDir, destDir);
-        }
-        else
-        {
-            CopyDirectory(sourceDir, destDir);
-            Directory.Delete(sourceDir, true);
-        }
-    }
-
-    public static void CopyDirectory(string sourceDir, string destDir)
-    {
-        Directory.CreateDirectory(destDir);
-        foreach (var file in Directory.GetFiles(sourceDir))
-        {
-            File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
-        }
-        foreach (var dir in Directory.GetDirectories(sourceDir))
-        {
-            CopyDirectory(dir, Path.Combine(destDir, Path.GetFileName(dir)));
+            ServerIP = serverConfigWindow.ServerIP;
+            ServerPort = serverConfigWindow.ServerPort;
+            _ = RefreshMods();
         }
     }
 }
@@ -507,8 +276,6 @@ public class ModEntry
 {
     public required string Name { get; set; }
     public required string Version { get; set; }
-    public string? DownloadUrl { get; set; }
-    public string? FolderName { get; set; } // If the user has manually installed mods, we need to know the folder name to delete it later
 }
 
 public class ModStatusEntry
@@ -517,7 +284,5 @@ public class ModStatusEntry
     public required string LocalVersion { get; set; }
     public required string ServerVersion { get; set; }
     public string? Status { get; set; }
-    public string? DownloadUrl { get; set; }
-    public string? FolderName {get; set; } // If the user has manually installed mods, we need to know the folder name to delete it later
 }
 
