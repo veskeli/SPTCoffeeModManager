@@ -30,7 +30,7 @@ public partial class MainWindow
         try
         {
             var exeDir = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName)!;
-            _modsFolder = Path.Combine(exeDir, "user", "mods");
+            _modsFolder = Path.Combine(exeDir, "BepInEx", "Plugins");
             _clientPath = Path.Combine(exeDir, "SPT", "SPT.Launcher.exe");
 
             // store exe directory and config path
