@@ -5,16 +5,23 @@ namespace SPTCoffeeModManager;
 
 public partial class ServerConfigWindow : Window
 {
-    public string ServerIP { get; private set; }
+    public string ServerIp { get; private set; }
     public int ServerPort { get; private set; }
+    public string SptServerAddress { get; private set; }
 
-    public ServerConfigWindow(string serverIP = "", int serverPort = 0)
+    public ServerConfigWindow(string serverIp = "", int serverPort = 0, string sptServerAddressTextBox = "")
     {
         InitializeComponent();
 
+        // Initialize properties with defaults when incoming values are empty/invalid
+        ServerIp = string.IsNullOrWhiteSpace(serverIp) ? "127.0.0.1" : serverIp;
+        ServerPort = serverPort > 0 ? serverPort : 25569;
+        SptServerAddress = string.IsNullOrWhiteSpace(sptServerAddressTextBox) ? "http://127.0.0.1:6969" : sptServerAddressTextBox;
+
         // Populate fields with incoming values
-        AddressTextBox.Text = serverIP;
+        AddressTextBox.Text = serverIp;
         PortTextBox.Text = serverPort > 0 ? serverPort.ToString() : string.Empty;
+        SptServerAddressTextBox.Text = sptServerAddressTextBox;
     }
 
     // Make the window draggable
@@ -45,8 +52,9 @@ public partial class ServerConfigWindow : Window
             return;
         }
 
-        ServerIP = ip;
+        ServerIp = ip;
         ServerPort = port;
+        SptServerAddress = SptServerAddressTextBox.Text.Trim();
 
         // Setting DialogResult closes the dialog and makes ShowDialog() return true.
         this.DialogResult = true;

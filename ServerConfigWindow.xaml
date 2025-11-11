@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SPTCoffeeModManager"
         mc:Ignorable="d"
         Background="#1e1e1e" Foreground="White"
-        Title="ServerConfigWindow" Height="270" Width="450"
+        Title="ServerConfigWindow" Height="320" Width="450"
         ResizeMode="NoResize" WindowStyle="None" WindowStartupLocation="CenterScreen">
     <Grid Margin="0">
         <Grid.RowDefinitions>
@@ -41,7 +41,9 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
+            <!-- Form Fields -->
             <StackPanel Grid.Column="0" VerticalAlignment="Top" HorizontalAlignment="Center" Width="400">
+                <!-- Server Address -->
                 <TextBlock Text="Server Address" Margin="0,4" Foreground="White" />
                 <TextBox x:Name="AddressTextBox"
                          Height="30"
@@ -49,9 +51,17 @@
                          Background="#2b2b2b"
                          BorderBrush="#3a3a3a"
                          Foreground="White" />
-
+                <!-- Port -->
                 <TextBlock Text="Port" Margin="0,12,0,4" Foreground="White" />
                 <TextBox x:Name="PortTextBox"
+                         Height="30"
+                         Margin="0,6,0,0"
+                         Background="#2b2b2b"
+                         BorderBrush="#3a3a3a"
+                         Foreground="White" />
+                <!-- SPT Server Address -->
+                <TextBlock Text="SPT Server Address" Margin="0,12,0,4" Foreground="White" />
+                <TextBox x:Name="SptServerAddressTextBox"
                          Height="30"
                          Margin="0,6,0,0"
                          Background="#2b2b2b"

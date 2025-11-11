@@ -14,16 +14,16 @@ namespace SPTCoffeeModManager;
 /// </summary>
 public partial class MainWindow
 {
-    private readonly string _modsFolder;
-    private readonly string _clientPath;
+    private readonly string? _modsFolder;
+    private readonly string? _clientPath;
 
     // IP/Port of your server console
-    private string ServerIP = "127.0.0.1";
-    private int ServerPort = 25569;
+    private string _serverIp = "127.0.0.1";
+    private int _serverPort = 25569;
+    private string _sptServerAddress = "http://127.0.0.1:6969";
 
     // store exe directory and config path
-    private readonly string _exeDir;
-    private readonly string _configPath;
+    private readonly string? _configPath;
 
     public MainWindow()
     {
@@ -34,12 +34,11 @@ public partial class MainWindow
             _clientPath = Path.Combine(exeDir, "SPT", "SPT.Launcher.exe");
 
             // store exe directory and config path
-            _exeDir = exeDir;
-            _configPath = Path.Combine(_exeDir, "coffee_manager_server_config.json");
+            _configPath = Path.Combine(exeDir, "coffee_manager_server_config.json");
         }
         catch
         {
-            MessageBox.Show("SPT.Launcher.exe not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("SPT.Launcher.exe not found. Please make sure to run from `SPT` root folder.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             Close();
             return;
         }
@@ -53,7 +52,7 @@ public partial class MainWindow
         {
             if (!File.Exists(_clientPath))
             {
-                MessageBox.Show("SPT.Launcher.exe not found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("SPT.Launcher.exe not found. Please make sure to run from `SPT` root folder.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Close();
                 return;
             }
@@ -62,7 +61,7 @@ public partial class MainWindow
         };
     }
 
-    private string BaseUrl => $"http://{ServerIP}:{ServerPort}";
+    private string BaseUrl => $"http://{_serverIp}:{_serverPort}";
 
     private async Task<List<ModEntry>> GetServerModsAsync()
     {
@@ -82,38 +81,70 @@ public partial class MainWindow
     private List<ModEntry> GetLocalMods()
     {
         var mods = new List<ModEntry>();
-        if (!Directory.Exists(_modsFolder)) return mods;
 
-        foreach (var dir in Directory.GetDirectories(_modsFolder))
+        if (!Directory.Exists(_modsFolder))
+            return mods;
+
+        // Excluded mod names and folders (same as server)
+        var excludedMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            var dllFiles = Directory.GetFiles(dir, "*.dll", SearchOption.TopDirectoryOnly);
-            if (dllFiles.Length == 0) continue;
+            "spt-common", "spt-core", "spt-custom", "spt-debugging",
+            "spt-reflection", "spt-singleplayer", "Fika.Core", "Fika.Headless"
+        };
+
+        var excludedModFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "spt", "fika"
+        };
+
+        var processedMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Folder-based mods
+        foreach (var modFolder in Directory.GetDirectories(_modsFolder))
+        {
+            var folderName = Path.GetFileName(modFolder);
+            if (excludedModFolders.Contains(folderName))
+                continue;
+
+            var dllFiles = Directory.GetFiles(modFolder, "*.dll", SearchOption.AllDirectories);
+            if (dllFiles.Length == 0)
+                continue;
+
+            if (excludedMods.Contains(folderName) || processedMods.Contains(folderName))
+                continue;
 
             var version = FileVersionInfo.GetVersionInfo(dllFiles[0]).FileVersion ?? "0";
-            var name = Path.GetFileName(dir);
 
             mods.Add(new ModEntry
             {
-                Name = name,
+                Name = folderName,
                 Version = version,
-                FileName = name + ".zip",
+                FileName = folderName + ".zip",
                 IsFolderMod = true
             });
+
+            processedMods.Add(folderName);
         }
 
-        // Add DLLs directly in Plugins folder
+        // Single DLL mods
         foreach (var dll in Directory.GetFiles(_modsFolder, "*.dll", SearchOption.TopDirectoryOnly))
         {
+            var modName = Path.GetFileNameWithoutExtension(dll);
+
+            if (excludedMods.Contains(modName) || processedMods.Contains(modName))
+                continue;
+
             var version = FileVersionInfo.GetVersionInfo(dll).FileVersion ?? "0";
-            var name = Path.GetFileNameWithoutExtension(dll);
 
             mods.Add(new ModEntry
             {
-                Name = name,
+                Name = modName,
                 Version = version,
-                FileName = name + ".zip",
+                FileName = modName + ".zip",
                 IsFolderMod = false
             });
+
+            processedMods.Add(modName);
         }
 
         return mods;
@@ -148,12 +179,20 @@ public partial class MainWindow
     {
         var statusList = new List<ModStatusEntry>();
 
-        var localDict = localMods.ToDictionary(m => m.Name, m => m);
+        // Create dictionaries for quick lookup
+        var localDict = localMods.ToDictionary(m => m.Name, m => m, StringComparer.OrdinalIgnoreCase);
+        var serverDict = serverMods.ToDictionary(m => m.Name, m => m, StringComparer.OrdinalIgnoreCase);
 
+        // Check server mods against local mods
         foreach (var serverMod in serverMods)
         {
             localDict.TryGetValue(serverMod.Name, out var localMod);
-            var status = (localMod != null && localMod.Version == serverMod.Version) ? "Up to date" : "Update";
+
+            string status;
+            if (localMod == null)
+                status = "Not installed";
+            else
+                status = localMod.Version == serverMod.Version ? "Up to date" : "Update";
 
             statusList.Add(new ModStatusEntry
             {
@@ -162,6 +201,21 @@ public partial class MainWindow
                 ServerVersion = serverMod.Version,
                 Status = status
             });
+        }
+
+        // Check for local mods not on server
+        foreach (var localMod in localMods)
+        {
+            if (!serverDict.ContainsKey(localMod.Name))
+            {
+                statusList.Add(new ModStatusEntry
+                {
+                    Name = localMod.Name,
+                    LocalVersion = localMod.Version,
+                    ServerVersion = "-",
+                    Status = "Removed"
+                });
+            }
         }
 
         return statusList;
@@ -363,18 +417,18 @@ public partial class MainWindow
     {
         // Set status to checking
         ServerStatusText.Text = "Checking...";
-        ServerStatusText.Foreground = System.Windows.Media.Brushes.Yellow;
+        ServerStatusText.Foreground = System.Windows.Media.Brushes.Gray;
         // Refresh mods to check server status
         _ = RefreshMods();
     }
 
     private void ConfigureServerButton_Click(object sender, RoutedEventArgs e)
     {
-        var serverConfigWindow = new ServerConfigWindow(ServerIP, ServerPort);
+        var serverConfigWindow = new ServerConfigWindow(_serverIp, _serverPort);
         if (serverConfigWindow.ShowDialog() == true)
         {
-            ServerIP = serverConfigWindow.ServerIP;
-            ServerPort = serverConfigWindow.ServerPort;
+            _serverIp = serverConfigWindow.ServerIp;
+            _serverPort = serverConfigWindow.ServerPort;
 
             // Save updated config to exe folder
             SaveConfig();
@@ -395,10 +449,12 @@ public partial class MainWindow
             var cfg = JsonSerializer.Deserialize<AppConfig>(json);
             if (cfg != null)
             {
-                if (!string.IsNullOrWhiteSpace(cfg.ServerIP))
-                    ServerIP = cfg.ServerIP;
+                if (!string.IsNullOrWhiteSpace(cfg.ServerIp))
+                    _serverIp = cfg.ServerIp;
                 if (cfg.ServerPort > 0)
-                    ServerPort = cfg.ServerPort;
+                    _serverPort = cfg.ServerPort;
+                if (!string.IsNullOrWhiteSpace(cfg.SptServerAddress))
+                    _sptServerAddress = cfg.SptServerAddress;
             }
         }
         catch (Exception ex)
@@ -415,7 +471,7 @@ public partial class MainWindow
             if (string.IsNullOrEmpty(_configPath))
                 return;
 
-            var cfg = new AppConfig { ServerIP = ServerIP, ServerPort = ServerPort };
+            var cfg = new AppConfig { ServerIp = _serverIp, ServerPort = _serverPort, SptServerAddress = _sptServerAddress};
             var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_configPath, json);
         }
@@ -429,8 +485,9 @@ public partial class MainWindow
 // new: simple config DTO
 public class AppConfig
 {
-    public string? ServerIP { get; set; }
+    public string? ServerIp { get; set; }
     public int ServerPort { get; set; }
+    public string? SptServerAddress { get; set; }
 }
 
 public class ModEntry
