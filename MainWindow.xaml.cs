@@ -442,7 +442,7 @@ public partial class MainWindow
             Debug.WriteLine($"Error checking for updates: {ex.Message}");
         }
         await Task.Delay(1000); // 1 second cooldown
-        CheckUpdatesButton.Content = "Check for Updates";
+        CheckUpdatesButton.Content = "Check for mod updates";
         CheckUpdatesButton.IsEnabled = true;
     }
 

@@ -103,7 +103,7 @@
         <Grid Grid.Row="2" Margin="0,10,10,10" Height="30">
             <TextBlock Name="StatusTextBlock" Text="" VerticalAlignment="Center" Foreground="White" FontSize="15" Margin="10,0,0,0" HorizontalAlignment="Left" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Name="CheckUpdatesButton" Content="Check Updates" Width="120" Margin="0,0,10,0"
+                <Button Name="CheckUpdatesButton" Content="Check for mod updates" Width="170" Margin="0,0,10,0"
                         Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="CheckUpdates_Click" />
                 <Button Name="LaunchOrUpdateButton" Content="Play" Width="120"
                         Background="#057328" Foreground="White" BorderBrush="#3c3c3c" Click="LaunchOrUpdate_Click" />
