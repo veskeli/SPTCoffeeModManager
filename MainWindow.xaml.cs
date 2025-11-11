@@ -69,7 +69,7 @@ public partial class MainWindow
         using var client = new HttpClient();
         try
         {
-            var response = await client.GetStringAsync($"{BaseUrl}/mods");
+            var response = await client.GetStringAsync($"{BaseUrl}/PluginVersions.json");
             var mods = JsonSerializer.Deserialize<List<ModEntry>>(response)!;
             return mods ?? new List<ModEntry>();
         }
@@ -84,18 +84,36 @@ public partial class MainWindow
         var mods = new List<ModEntry>();
         if (!Directory.Exists(_modsFolder)) return mods;
 
-        foreach (var dll in Directory.GetFiles(_modsFolder, "*.dll"))
+        foreach (var dir in Directory.GetDirectories(_modsFolder))
         {
-            try
+            var dllFiles = Directory.GetFiles(dir, "*.dll", SearchOption.TopDirectoryOnly);
+            if (dllFiles.Length == 0) continue;
+
+            var version = FileVersionInfo.GetVersionInfo(dllFiles[0]).FileVersion ?? "0";
+            var name = Path.GetFileName(dir);
+
+            mods.Add(new ModEntry
             {
-                var fileVersion = FileVersionInfo.GetVersionInfo(dll).FileVersion ?? "0";
-                mods.Add(new ModEntry
-                {
-                    Name = Path.GetFileNameWithoutExtension(dll),
-                    Version = fileVersion
-                });
-            }
-            catch { }
+                Name = name,
+                Version = version,
+                FileName = name + ".zip",
+                IsFolderMod = true
+            });
+        }
+
+        // Add DLLs directly in Plugins folder
+        foreach (var dll in Directory.GetFiles(_modsFolder, "*.dll", SearchOption.TopDirectoryOnly))
+        {
+            var version = FileVersionInfo.GetVersionInfo(dll).FileVersion ?? "0";
+            var name = Path.GetFileNameWithoutExtension(dll);
+
+            mods.Add(new ModEntry
+            {
+                Name = name,
+                Version = version,
+                FileName = name + ".zip",
+                IsFolderMod = false
+            });
         }
 
         return mods;
@@ -192,49 +210,61 @@ public partial class MainWindow
         {
             try
             {
-                var url = $"{BaseUrl}/mods/{mod.Name}";
+                // Get PluginVersions.json to know FileName and IsFolderMod
+                var serverMods = await GetServerModsAsync();
+                var modInfo = serverMods.FirstOrDefault(m => m.Name == mod.Name);
+                if (modInfo == null)
+                {
+                    Debug.WriteLine($"Mod info not found on server: {mod.Name}");
+                    continue;
+                }
+
+                var url = $"{BaseUrl}/mods/{modInfo.Name}";
                 var data = await client.GetByteArrayAsync(url);
 
                 // Save temp zip
-                var tempZip = Path.Combine(Path.GetTempPath(), $"{mod.Name}.zip");
+                var tempZip = Path.Combine(Path.GetTempPath(), modInfo.FileName);
                 await File.WriteAllBytesAsync(tempZip, data);
 
-                // Extract to a temp folder
+                // Extract to temp folder
                 var extractPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_extract_{Guid.NewGuid():N}");
-                if (Directory.Exists(extractPath))
-                    Directory.Delete(extractPath, true);
-
+                if (Directory.Exists(extractPath)) Directory.Delete(extractPath, true);
                 ZipFile.ExtractToDirectory(tempZip, extractPath);
                 File.Delete(tempZip);
 
-                // Determine `BepInEx/Plugins` folder (assumes `_clientPath` is `...\\SPT\\SPT.Launcher.exe`)
-                var sptDir = Path.GetDirectoryName(_clientPath)!;
-                var exeDir = Path.GetDirectoryName(sptDir)!;
-                var pluginsDir = Path.Combine(exeDir, "BepInEx", "Plugins");
-                Directory.CreateDirectory(pluginsDir);
+                // Determine Plugins folder
+                Directory.CreateDirectory(_modsFolder);
 
-                // Move extracted folder contents into `BepInEx/Plugins`
-                foreach (var entry in Directory.GetFileSystemEntries(extractPath))
+                if (modInfo.IsFolderMod)
                 {
-                    var name = Path.GetFileName(entry);
-                    var destPath = Path.Combine(pluginsDir, name);
-
-                    if (Directory.Exists(entry))
+                    try
                     {
-                        if (Directory.Exists(destPath))
-                            Directory.Delete(destPath, true);
-                        Directory.Move(entry, destPath);
+                        // Move extracted folder to Plugins/<FolderName>
+                        var srcFolder = Directory.GetDirectories(extractPath).FirstOrDefault() ?? extractPath;
+                        var destFolder = Path.Combine(_modsFolder, mod.Name);
+                        if (Directory.Exists(destFolder)) Directory.Delete(destFolder, true);
+                        Directory.Move(srcFolder, destFolder);
                     }
-                    else if (File.Exists(entry))
+                    catch (Exception ex)
                     {
-                        if (File.Exists(destPath))
-                            File.Delete(destPath);
-                        File.Move(entry, destPath);
+                        Debug.WriteLine($"Failed to move folder mod {mod.Name}: {ex.Message}");
+                        MessageBox.Show($"Failed to update folder mod {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        throw;
+                    }
+                }
+                else
+                {
+                    // Single DLL: move directly into Plugins
+                    var dllFile = Directory.GetFiles(extractPath, "*.dll", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                    if (dllFile != null)
+                    {
+                        var destFile = Path.Combine(_modsFolder, Path.GetFileName(dllFile));
+                        if (File.Exists(destFile)) File.Delete(destFile);
+                        File.Move(dllFile, destFile);
                     }
                 }
 
-                if (Directory.Exists(extractPath))
-                    Directory.Delete(extractPath, true);
+                if (Directory.Exists(extractPath)) Directory.Delete(extractPath, true);
 
                 mod.Status = "Up to date";
             }
@@ -242,6 +272,7 @@ public partial class MainWindow
             {
                 Debug.WriteLine($"Failed to update {mod.Name}: {ex.Message}");
                 success = false;
+                MessageBox.Show($"Failed to update mod {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -379,6 +410,8 @@ public class ModEntry
 {
     public required string Name { get; set; }
     public required string Version { get; set; }
+    public required string FileName { get; set; }       // Name of the zip file
+    public required bool IsFolderMod { get; set; }     // true if folder-based mod
 }
 
 public class ModStatusEntry
