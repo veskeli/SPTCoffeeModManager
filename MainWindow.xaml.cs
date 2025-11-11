@@ -202,82 +202,109 @@ public partial class MainWindow
     }
 
     private async Task<bool> DownloadAndUpdateMods(List<ModStatusEntry> mods)
+{
+    bool success = true;
+    using var client = new HttpClient();
+
+    foreach (var mod in mods)
     {
-        bool success = true;
-        using var client = new HttpClient();
-
-        foreach (var mod in mods)
+        try
         {
-            try
+            // Fetch server mod info
+            var serverMods = await GetServerModsAsync();
+            var modInfo = serverMods.FirstOrDefault(m => m.Name == mod.Name);
+            if (modInfo == null)
             {
-                // Get PluginVersions.json to know FileName and IsFolderMod
-                var serverMods = await GetServerModsAsync();
-                var modInfo = serverMods.FirstOrDefault(m => m.Name == mod.Name);
-                if (modInfo == null)
-                {
-                    Debug.WriteLine($"Mod info not found on server: {mod.Name}");
-                    continue;
-                }
-
-                var url = $"{BaseUrl}/mods/{modInfo.Name}";
-                var data = await client.GetByteArrayAsync(url);
-
-                // Save temp zip
-                var tempZip = Path.Combine(Path.GetTempPath(), modInfo.FileName);
-                await File.WriteAllBytesAsync(tempZip, data);
-
-                // Extract to temp folder
-                var extractPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_extract_{Guid.NewGuid():N}");
-                if (Directory.Exists(extractPath)) Directory.Delete(extractPath, true);
-                ZipFile.ExtractToDirectory(tempZip, extractPath);
-                File.Delete(tempZip);
-
-                // Determine Plugins folder
-                Directory.CreateDirectory(_modsFolder);
-
-                if (modInfo.IsFolderMod)
-                {
-                    try
-                    {
-                        // Move extracted folder to Plugins/<FolderName>
-                        var srcFolder = Directory.GetDirectories(extractPath).FirstOrDefault() ?? extractPath;
-                        var destFolder = Path.Combine(_modsFolder, mod.Name);
-                        if (Directory.Exists(destFolder)) Directory.Delete(destFolder, true);
-                        Directory.Move(srcFolder, destFolder);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Failed to move folder mod {mod.Name}: {ex.Message}");
-                        MessageBox.Show($"Failed to update folder mod {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                        throw;
-                    }
-                }
-                else
-                {
-                    // Single DLL: move directly into Plugins
-                    var dllFile = Directory.GetFiles(extractPath, "*.dll", SearchOption.TopDirectoryOnly).FirstOrDefault();
-                    if (dllFile != null)
-                    {
-                        var destFile = Path.Combine(_modsFolder, Path.GetFileName(dllFile));
-                        if (File.Exists(destFile)) File.Delete(destFile);
-                        File.Move(dllFile, destFile);
-                    }
-                }
-
-                if (Directory.Exists(extractPath)) Directory.Delete(extractPath, true);
-
-                mod.Status = "Up to date";
+                Debug.WriteLine($"Mod info not found on server: {mod.Name}");
+                continue;
             }
-            catch (Exception ex)
+
+            var url = $"{BaseUrl}/mods/{modInfo.Name}";
+            var data = await client.GetByteArrayAsync(url);
+
+            // Save temp zip
+            var tempZip = Path.Combine(Path.GetTempPath(), modInfo.FileName);
+            await File.WriteAllBytesAsync(tempZip, data);
+
+            // Extract to temp folder
+            var extractPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_extract_{Guid.NewGuid():N}");
+            if (Directory.Exists(extractPath))
+                Directory.Delete(extractPath, true);
+
+            ZipFile.ExtractToDirectory(tempZip, extractPath);
+            File.Delete(tempZip);
+
+            // Ensure Plugins folder exists
+            Directory.CreateDirectory(_modsFolder);
+
+            if (modInfo.IsFolderMod)
             {
-                Debug.WriteLine($"Failed to update {mod.Name}: {ex.Message}");
-                success = false;
-                MessageBox.Show($"Failed to update mod {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Detect correct root folder after extraction
+                string srcFolder = extractPath;
+
+                var subDirs = Directory.GetDirectories(extractPath);
+                if (subDirs.Length == 1 &&
+                    File.Exists(Path.Combine(subDirs[0], $"{mod.Name}.dll")))
+                {
+                    // The zip contains a root folder named after the mod (common case)
+                    srcFolder = subDirs[0];
+                }
+
+                var destFolder = Path.Combine(_modsFolder, mod.Name);
+                if (Directory.Exists(destFolder))
+                    Directory.Delete(destFolder, true);
+
+                CopyDirectory(srcFolder, destFolder);
             }
+            else
+            {
+                // Single DLL mod
+                var dllFile = Directory.GetFiles(extractPath, "*.dll", SearchOption.AllDirectories).FirstOrDefault();
+                if (dllFile != null)
+                {
+                    var destFile = Path.Combine(_modsFolder, Path.GetFileName(dllFile));
+                    if (File.Exists(destFile))
+                        File.Delete(destFile);
+                    File.Copy(dllFile, destFile, overwrite: true);
+                }
+            }
+
+            // Cleanup
+            if (Directory.Exists(extractPath))
+                Directory.Delete(extractPath, true);
+
+            mod.Status = "Up to date";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to update {mod.Name}: {ex.Message}");
+            success = false;
+            MessageBox.Show($"Failed to update mod {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    ModListView.Items.Refresh();
+    return success;
+}
+
+    /// <summary>
+    /// Recursively copies a directory and all contents.
+    /// </summary>
+    private static void CopyDirectory(string sourceDir, string destinationDir)
+    {
+        Directory.CreateDirectory(destinationDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var destFile = Path.Combine(destinationDir, Path.GetFileName(file));
+            File.Copy(file, destFile, overwrite: true);
         }
 
-        ModListView.Items.Refresh();
-        return success;
+        foreach (var subDir in Directory.GetDirectories(sourceDir))
+        {
+            var destSubDir = Path.Combine(destinationDir, Path.GetFileName(subDir));
+            CopyDirectory(subDir, destSubDir);
+        }
     }
 
     private void LaunchTheGame()
