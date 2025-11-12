@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SPTCoffeeModManager"
         mc:Ignorable="d"
         Background="#1e1e1e" Foreground="White"
-        Title="UpdateWindow" Height="180" Width="400"
+        Title="UpdateWindow" Height="180" Width="500"
         ResizeMode="NoResize" WindowStyle="None" WindowStartupLocation="CenterScreen">
     <Grid Margin="0">
         <Grid.RowDefinitions>
@@ -38,7 +38,7 @@
                    Text="New Update Available!"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Center"
-                   FontSize="24"
+                   FontSize="22"
                    Margin="20"/>
         <Button x:Name="UpdateButton"
                 Click="UpdateButton_Click"
