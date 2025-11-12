@@ -413,6 +413,10 @@ public partial class MainWindow
                     .ToList();
                 await RemoveMods(modsToRemove);
 
+                // Small delay before finishing to let user see status and windows catch up
+                await Task.Delay(100);
+                StatusTextBlock.Text = "Update complete.";
+                await Task.Delay(200);
 
                 LaunchOrUpdateButton.Content = "Launch";
                 LaunchOrUpdateButton.IsEnabled = true;
@@ -425,7 +429,7 @@ public partial class MainWindow
                 LaunchTheGame();
             }
 
-            await Task.Delay(1500);
+            await Task.Delay(2500);
             StatusTextBlock.Text = "";
         }
         catch (Exception ex)
@@ -482,12 +486,13 @@ public partial class MainWindow
                 if (!Directory.Exists(_modsFolder))
                     return false;
 
-                // Show progress: downloading
-                mod.Status = "Downloading...";
+                // Initial UI update
+                mod.Status = "Preparing...";
                 ModListView.Items.Refresh();
-                await Task.Delay(50); // let UI update
+                StatusTextBlock.Text = $"Updating mod: {mod.Name}";
+                await Task.Delay(50);
 
-                // Fetch mod info from server
+                // Get mod info from server
                 var serverMods = await GetServerModsAsync();
                 var modInfo = serverMods.FirstOrDefault(m => m.Name == mod.Name);
                 if (modInfo == null)
@@ -497,15 +502,49 @@ public partial class MainWindow
                 }
 
                 var url = $"{BaseUrl}/mods/{modInfo.Name}";
-                var data = await client.GetByteArrayAsync(url);
 
-                // Save temp zip
+                // --- Streamed download with progress ---
                 var tempZip = Path.Combine(Path.GetTempPath(), modInfo.FileName);
-                await File.WriteAllBytesAsync(tempZip, data);
+                if (File.Exists(tempZip)) File.Delete(tempZip);
 
-                // Extracting
+                using (var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    response.EnsureSuccessStatusCode();
+
+                    var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+                    var canReport = totalBytes > 0;
+
+                    await using var stream = await response.Content.ReadAsStreamAsync();
+                    await using var fileStream = File.Create(tempZip);
+
+                    var buffer = new byte[81920];
+                    long totalRead = 0;
+                    int read;
+                    double lastPercent = 0;
+
+                    while ((read = await stream.ReadAsync(buffer)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer.AsMemory(0, read));
+                        totalRead += read;
+
+                        if (canReport)
+                        {
+                            double percent = (double)totalRead / totalBytes * 100;
+                            if (percent - lastPercent >= 1) // only update every 1%
+                            {
+                                mod.Status = $"Downloading... {percent:F0}%";
+                                StatusTextBlock.Text = $"Updating mod: {mod.Name} - {percent:F0}%";
+                                ModListView.Items.Refresh();
+                                lastPercent = percent;
+                            }
+                        }
+                    }
+                }
+
+                // --- Extracting ---
                 mod.Status = "Extracting...";
                 ModListView.Items.Refresh();
+                StatusTextBlock.Text = $"Updating mod: {mod.Name}";
                 await Task.Delay(50);
 
                 // Extract to temp folder
@@ -521,9 +560,10 @@ public partial class MainWindow
 
                 if (modInfo.IsFolderMod)
                 {
-                    // Detect correct root folder after extraction
+                    // Handle nested mod folders correctly
                     string srcFolder = extractPath;
                     var subDirs = Directory.GetDirectories(extractPath);
+
                     if (subDirs.Length == 1 &&
                         File.Exists(Path.Combine(subDirs[0], $"{mod.Name}.dll")))
                     {
@@ -572,12 +612,14 @@ public partial class MainWindow
 
                 mod.Status = "Failed";
                 ModListView.Items.Refresh();
+                StatusTextBlock.Text = $"Failed to update mod: {mod.Name}";
 
                 MessageBox.Show($"Failed to update mod {mod.Name}: {ex.Message}",
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
+        StatusTextBlock.Text = "Mod updates complete.";
         return success;
     }
 
