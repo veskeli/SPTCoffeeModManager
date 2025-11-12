@@ -15,6 +15,7 @@ namespace SPTCoffeeModManager;
 public partial class MainWindow
 {
     private readonly string? _modsFolder;
+    private readonly string? _pluginsConfigFolder;
     private readonly string? _clientPath;
 
     // IP/Port of your server console
@@ -30,7 +31,8 @@ public partial class MainWindow
         try
         {
             var exeDir = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule!.FileName)!;
-            _modsFolder = Path.Combine(exeDir, "BepInEx", "Plugins");
+            _modsFolder = Path.Combine(exeDir, "BepInEx", "plugins");
+            _pluginsConfigFolder = Path.Combine(exeDir, "BepInEx", "config");
             _clientPath = Path.Combine(exeDir, "SPT", "SPT.Launcher.exe");
 
             // store exe directory and config path
@@ -57,6 +59,7 @@ public partial class MainWindow
                 return;
             }
 
+            await RefreshPluginConfigs();
             await RefreshMods();
         };
     }
@@ -239,34 +242,196 @@ public partial class MainWindow
         return true;
     }
 
+    private async Task<List<ConfigInfo>> GetServerConfigsAsync()
+    {
+        using var client = new HttpClient();
+        try
+        {
+            var response = await client.GetStringAsync($"{BaseUrl}/ConfigFiles.json");
+            var configs = JsonSerializer.Deserialize<List<ConfigInfo>>(response)!;
+            return configs ?? new List<ConfigInfo>();
+        }
+        catch
+        {
+            return new List<ConfigInfo>();
+        }
+    }
+
+    private List<ConfigInfo> GetLocalConfigs()
+    {
+        var configs = new List<ConfigInfo>();
+
+        if (!Directory.Exists(_pluginsConfigFolder))
+            return configs;
+
+        var excludedConfigs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "BepInEx.cfg", "com.bepis.bepinex.configurationmanager.cfg",
+            "com.fika.core.cfg", "com.fika.headless.cfg"
+        };
+
+        var configFiles = Directory.GetFiles(_pluginsConfigFolder, "*.cfg", SearchOption.TopDirectoryOnly);
+        foreach (var configFile in configFiles)
+        {
+            var fileName = Path.GetFileName(configFile);
+            if (excludedConfigs.Contains(fileName))
+                continue;
+
+            var lastModified = File.GetLastWriteTimeUtc(configFile);
+
+            configs.Add(new ConfigInfo
+            {
+                FileName = fileName,
+                LastModified = lastModified
+            });
+        }
+
+        return configs;
+    }
+
+    private async Task RefreshPluginConfigs()
+    {
+        SyncStatusText.Text = "Checking...";
+        SyncStatusText.Foreground = System.Windows.Media.Brushes.Gray;
+
+        var serverConfigs = await GetServerConfigsAsync();
+        var localConfigs = GetLocalConfigs();
+
+        if(serverConfigs.Count == 0)
+        {
+            SyncStatusText.Text = "Failed to get server configs";
+            SyncStatusText.Foreground = System.Windows.Media.Brushes.DarkOrange;
+            return;
+        }
+        if(localConfigs.Count == 0)
+        {
+            SyncStatusText.Text = "No local configs";
+            SyncStatusText.Foreground = System.Windows.Media.Brushes.Blue;
+            return;
+        }
+
+        if(serverConfigs.Count != localConfigs.Count)
+        {
+            SyncStatusText.Text = "Configs out of sync";
+            SyncStatusText.Foreground = System.Windows.Media.Brushes.CadetBlue;
+            return;
+        }
+
+        // TODO: Check enforced configs last modified dates
+
+        SyncStatusText.Text = "Configs synced";
+        SyncStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+    }
+
     private async void LaunchOrUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (LaunchOrUpdateButton.Content.ToString() == "Update")
+        try
         {
-            LaunchOrUpdateButton.IsEnabled = false;
-            StatusTextBlock.Text = "Updating mods...";
-            var modsToUpdate = ((List<ModStatusEntry>)ModListView.ItemsSource)
-                .Where(m => m.Status == "Update" || m.Status == "Not installed")
-                .ToList();
+            // Sync configs
+            StatusTextBlock.Text = "Syncing config files...";
+            var serverConfigs = await GetServerConfigsAsync();
+            var localConfigs = GetLocalConfigs();
+            SyncStatusText.Text = "Syncing configs...";
+            SyncStatusText.Foreground = System.Windows.Media.Brushes.DodgerBlue;
 
-            // Download and update mods
-            var allUpdated = await DownloadAndUpdateMods(modsToUpdate);
-            StatusTextBlock.Text = allUpdated ? "All mods updated" : "Some mods failed";
+            // Check if configs length differ (some local configs removed or this is first launch) sync all missing configs
+            if (localConfigs.Count != serverConfigs.Count)
+            {
+                foreach (var serverConfig in serverConfigs)
+                {
+                    var localConfig = localConfigs.FirstOrDefault(c =>
+                        string.Equals(c.FileName, serverConfig.FileName, StringComparison.OrdinalIgnoreCase));
 
-            // Remove mods marked as "Removed"
-            var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
-                .Where(m => m.Status == "Removed")
-                .ToList();
-            await RemoveMods(modsToRemove);
+                    if (localConfig == null)
+                    {
+                        try
+                        {
+                            using var client = new HttpClient();
+                            var url = $"{BaseUrl}/configs/{Path.GetFileNameWithoutExtension(serverConfig.FileName)}";
+                            var data = await client.GetByteArrayAsync(url);
 
-            LaunchOrUpdateButton.Content = "Launch";
-            LaunchOrUpdateButton.IsEnabled = true;
+                            var destPath = Path.Combine(_pluginsConfigFolder!, serverConfig.FileName);
+                            await File.WriteAllBytesAsync(destPath, data);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to download config {serverConfig.FileName}: {ex.Message}");
+                            MessageBox.Show($"Failed to download config {serverConfig.FileName}: {ex.Message}",
+                                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                    }
+                }
+            }
+            // Download enforced configs if missing or outdated
+            else
+            {
+                foreach (var serverConfig in serverConfigs.Where(c => c.IsEnforced))
+                {
+                    var localConfig = localConfigs.FirstOrDefault(c =>
+                        string.Equals(c.FileName, serverConfig.FileName, StringComparison.OrdinalIgnoreCase));
 
-            await RefreshMods();
+                    if (localConfig == null || localConfig.LastModified < serverConfig.LastModified)
+                    {
+                        try
+                        {
+                            using var client = new HttpClient();
+                            var url = $"{BaseUrl}/configs/{Path.GetFileNameWithoutExtension(serverConfig.FileName)}";
+                            var data = await client.GetByteArrayAsync(url);
+
+                            var destPath = Path.Combine(_pluginsConfigFolder!, serverConfig.FileName);
+                            await File.WriteAllBytesAsync(destPath, data);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to download config {serverConfig.FileName}: {ex.Message}");
+                            MessageBox.Show($"Failed to download config {serverConfig.FileName}: {ex.Message}",
+                                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                    }
+                }
+            }
+            SyncStatusText.Text = "Configs synced";
+            SyncStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+
+            if (LaunchOrUpdateButton.Content.ToString() == "Update")
+            {
+                LaunchOrUpdateButton.IsEnabled = false;
+                StatusTextBlock.Text = "Updating mods...";
+                var modsToUpdate = ((List<ModStatusEntry>)ModListView.ItemsSource)
+                    .Where(m => m.Status == "Update" || m.Status == "Not installed")
+                    .ToList();
+
+                // Download and update mods
+                var allUpdated = await DownloadAndUpdateMods(modsToUpdate);
+                StatusTextBlock.Text = allUpdated ? "All mods updated" : "Some mods failed";
+
+                // Remove mods marked as "Removed"
+                var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
+                    .Where(m => m.Status == "Removed")
+                    .ToList();
+                await RemoveMods(modsToRemove);
+
+
+                LaunchOrUpdateButton.Content = "Launch";
+                LaunchOrUpdateButton.IsEnabled = true;
+
+                await RefreshMods();
+            }
+            else
+            {
+                StatusTextBlock.Text = "Launching the game...";
+                LaunchTheGame();
+            }
+
+            await Task.Delay(500);
+            StatusTextBlock.Text = "";
         }
-        else
+        catch (Exception ex)
         {
-            LaunchTheGame();
+            Debug.WriteLine($"Error during launch/update: {ex.Message}");
+            MessageBox.Show($"Error during launch/update: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -274,6 +439,8 @@ public partial class MainWindow
     {
         try
         {
+            // Show progress: removing mods
+            StatusTextBlock.Text = "Removing old mods...";
             await Task.Run(() =>
             {
                 foreach (var mod in modsToRemove)
@@ -292,6 +459,8 @@ public partial class MainWindow
                     }
                 }
             });
+            // Update mod list UI
+            ModListView.Items.Refresh();
         }
         catch (Exception ex)
         {
@@ -566,6 +735,13 @@ public class ModEntry
     public required string Version { get; set; }
     public required string FileName { get; set; }       // Name of the zip file
     public required bool IsFolderMod { get; set; }     // true if folder-based mod
+}
+
+public class ConfigInfo
+{
+    public string FileName { get; set; } = "";
+    public DateTime LastModified { get; set; }
+    public bool IsEnforced { get; set; } = false; // If true, launcher will get this config file from server on launch
 }
 
 public class ModStatusEntry
