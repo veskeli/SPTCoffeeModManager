@@ -62,8 +62,8 @@ public class UpdaterService
                 FileName = updaterExe,
                 Arguments = $"\"{baseDir}\" \"{tempZip}\" \"{Path.GetFileName(exePath)}\"",
                 UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
+                CreateNoWindow = false,
+                WindowStyle = ProcessWindowStyle.Normal
             };
 
             Process.Start(startInfo);
