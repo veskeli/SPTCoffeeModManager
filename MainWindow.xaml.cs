@@ -473,6 +473,7 @@ public partial class MainWindow
     {
         bool success = true;
         using var client = new HttpClient();
+        client.Timeout = TimeSpan.FromMinutes(120); // 2 hours timeout for large mods
 
         foreach (var mod in mods)
         {
