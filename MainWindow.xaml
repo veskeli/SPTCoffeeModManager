@@ -78,6 +78,15 @@
                                 <DataTrigger Binding="{Binding Status}" Value="Removed">
                                     <Setter Property="Background" Value="#522900" /> <!-- Dark orange -->
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Downloading...">
+                                    <Setter Property="Background" Value="#2b2b3d" /> <!-- Dark blue -->
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Extracting...">
+                                    <Setter Property="Background" Value="#2b3d2b" /> <!-- Dark teal -->
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Installing...">
+                                    <Setter Property="Background" Value="#3d2b3d" /> <!-- Dark purple -->
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                         <!-- Style for column headers -->

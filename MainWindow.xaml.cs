@@ -257,7 +257,7 @@ public partial class MainWindow
             var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
                 .Where(m => m.Status == "Removed")
                 .ToList();
-            RemoveMods(modsToRemove);
+            await RemoveMods(modsToRemove);
 
             LaunchOrUpdateButton.Content = "Launch";
             LaunchOrUpdateButton.IsEnabled = true;
@@ -270,29 +270,28 @@ public partial class MainWindow
         }
     }
 
-    private void RemoveMods(List<ModStatusEntry> modsToRemove)
+    private async Task RemoveMods(List<ModStatusEntry> modsToRemove)
     {
         try
         {
-            foreach (var mod in modsToRemove)
+            await Task.Run(() =>
             {
-                if(mod.IsFolderMod)
+                foreach (var mod in modsToRemove)
                 {
-                    var modFolder = Path.Combine(_modsFolder!, mod.Name);
-                    if (Directory.Exists(modFolder))
+                    if (mod.IsFolderMod)
                     {
-                        Directory.Delete(modFolder, true);
+                        var modFolder = Path.Combine(_modsFolder!, mod.Name);
+                        if (Directory.Exists(modFolder))
+                            Directory.Delete(modFolder, true);
+                    }
+                    else
+                    {
+                        var dllFile = Path.Combine(_modsFolder!, mod.Name + ".dll");
+                        if (File.Exists(dllFile))
+                            File.Delete(dllFile);
                     }
                 }
-                else
-                {
-                    var dllFile = Path.Combine(_modsFolder!, mod.Name + ".dll");
-                    if (File.Exists(dllFile))
-                    {
-                        File.Delete(dllFile);
-                    }
-                }
-            }
+            });
         }
         catch (Exception ex)
         {
@@ -310,13 +309,15 @@ public partial class MainWindow
         {
             try
             {
-                // Ensure mod folder exists
                 if (!Directory.Exists(_modsFolder))
-                {
                     return false;
-                }
 
-                // Fetch server mod info
+                // Show progress: downloading
+                mod.Status = "Downloading...";
+                ModListView.Items.Refresh();
+                await Task.Delay(50); // let UI update
+
+                // Fetch mod info from server
                 var serverMods = await GetServerModsAsync();
                 var modInfo = serverMods.FirstOrDefault(m => m.Name == mod.Name);
                 if (modInfo == null)
@@ -331,6 +332,11 @@ public partial class MainWindow
                 // Save temp zip
                 var tempZip = Path.Combine(Path.GetTempPath(), modInfo.FileName);
                 await File.WriteAllBytesAsync(tempZip, data);
+
+                // Extracting
+                mod.Status = "Extracting...";
+                ModListView.Items.Refresh();
+                await Task.Delay(50);
 
                 // Extract to temp folder
                 var extractPath = Path.Combine(Path.GetTempPath(), $"{mod.Name}_extract_{Guid.NewGuid():N}");
@@ -347,12 +353,10 @@ public partial class MainWindow
                 {
                     // Detect correct root folder after extraction
                     string srcFolder = extractPath;
-
                     var subDirs = Directory.GetDirectories(extractPath);
                     if (subDirs.Length == 1 &&
                         File.Exists(Path.Combine(subDirs[0], $"{mod.Name}.dll")))
                     {
-                        // The zip contains a root folder named after the mod (common case)
                         srcFolder = subDirs[0];
                     }
 
@@ -360,14 +364,21 @@ public partial class MainWindow
                     if (Directory.Exists(destFolder))
                         Directory.Delete(destFolder, true);
 
+                    mod.Status = "Installing...";
+                    ModListView.Items.Refresh();
+                    await Task.Delay(50);
+
                     CopyDirectory(srcFolder, destFolder);
                 }
                 else
                 {
-                    // Single DLL mod
                     var dllFile = Directory.GetFiles(extractPath, "*.dll", SearchOption.AllDirectories).FirstOrDefault();
                     if (dllFile != null)
                     {
+                        mod.Status = "Installing...";
+                        ModListView.Items.Refresh();
+                        await Task.Delay(50);
+
                         var destFile = Path.Combine(_modsFolder, Path.GetFileName(dllFile));
                         if (File.Exists(destFile))
                             File.Delete(destFile);
@@ -379,17 +390,24 @@ public partial class MainWindow
                 if (Directory.Exists(extractPath))
                     Directory.Delete(extractPath, true);
 
+                // Done
                 mod.Status = "Up to date";
+                ModListView.Items.Refresh();
+                await Task.Delay(50);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to update {mod.Name}: {ex.Message}");
                 success = false;
-                MessageBox.Show($"Failed to update mod {mod.Name}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                mod.Status = "Failed";
+                ModListView.Items.Refresh();
+
+                MessageBox.Show($"Failed to update mod {mod.Name}: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        ModListView.Items.Refresh();
         return success;
     }
 
