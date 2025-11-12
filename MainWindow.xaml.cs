@@ -306,7 +306,7 @@ public partial class MainWindow
         if(localConfigs.Count == 0)
         {
             SyncStatusText.Text = "No local configs";
-            SyncStatusText.Foreground = System.Windows.Media.Brushes.Blue;
+            SyncStatusText.Foreground = System.Windows.Media.Brushes.MediumSlateBlue;
             return;
         }
 
@@ -425,7 +425,7 @@ public partial class MainWindow
                 LaunchTheGame();
             }
 
-            await Task.Delay(500);
+            await Task.Delay(1500);
             StatusTextBlock.Text = "";
         }
         catch (Exception ex)
