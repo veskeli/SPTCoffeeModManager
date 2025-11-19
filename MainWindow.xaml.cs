@@ -21,7 +21,7 @@ public partial class MainWindow
     private string _serverIp = "127.0.0.1";
     private int _serverPort = 25569;
     private string _sptServerAddress = "http://127.0.0.1:6969";
-    private string _secret = "";
+    private string? _secret = "";
 
     // store exe directory and config path
     private readonly string? _configPath;
@@ -712,7 +712,7 @@ public partial class MainWindow
 
     private void ConfigureServerButton_Click(object sender, RoutedEventArgs e)
     {
-        var serverConfigWindow = new ServerConfigWindow(_serverIp, _serverPort, _sptServerAddress, _secret);
+        var serverConfigWindow = new ServerConfigWindow(_serverIp, _serverPort, _sptServerAddress, _secret!);
         if (serverConfigWindow.ShowDialog() == true)
         {
             _serverIp = serverConfigWindow.ServerIp;
