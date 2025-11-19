@@ -47,11 +47,14 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- Server Status Text -->
-                    <TextBlock Text="Server Status: " FontWeight="Bold" Foreground="White" FontSize="16" Margin="0,0,8,0" />
-                    <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="Gray" FontSize="16" />
+                    <TextBlock Text="Server Status: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="0,0,8,0" />
+                    <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
+                    <!-- SPT Server Status Text -->
+                    <TextBlock Name="SptServerStatusTextLabel" Text="SPT Server Status: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="10,0,8,0" />
+                    <TextBlock Name="SptServerStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
                     <!-- Headless Server Status Text (Admin only) -->
-                    <TextBlock Name="HeadlessStatusTextLabel" Text="Headless Status: " FontWeight="Bold" Foreground="White" FontSize="16" Visibility="Collapsed" Margin="10,0,8,0" />
-                    <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="Gray" FontSize="16" Visibility="Collapsed" />
+                    <TextBlock Name="HeadlessStatusTextLabel" Text="Headless Status: " FontWeight="Bold" Foreground="White" FontSize="13" Visibility="Collapsed" Margin="10,0,8,0" />
+                    <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="Gray" FontSize="13" Visibility="Collapsed" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">

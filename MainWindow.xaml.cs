@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace SPTCoffeeModManager;
 
@@ -86,6 +87,12 @@ public partial class MainWindow
 
             // Fetch launcher settings
             await FetchLauncherSettings();
+
+            // Initialize server status check timer
+            InitializeServerCheckTimer();
+
+            // Check server status on load
+            await CheckServerStatus();
         };
     }
 
@@ -171,6 +178,43 @@ public partial class MainWindow
         return mods;
     }
 
+    private async Task CheckServerStatus()
+    {
+        try
+        {
+            using var client = new HttpClient();
+            var response = await client.GetAsync($"{BaseUrl}/sptserver/running");
+            // If response is successful, server is online
+            if (response.IsSuccessStatusCode)
+            {
+                ServerStatusText.Text = "Server Online";
+                ServerStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+
+                // Response returns true and false based on SPT server status so we can use it to update that
+                var content = await response.Content.ReadAsStringAsync();
+                if (bool.TryParse(content.Trim(), out bool isServerRunning))
+                {
+                    SptServerStatusText.Text = isServerRunning ? "Server Online" : "Server Offline";
+                    SptServerStatusText.Foreground = isServerRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
+                }
+            }
+            else
+            {
+                ServerStatusText.Text = "Server Offline";
+                ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+                SptServerStatusText.Text = "Server Offline";
+                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            }
+        }
+        catch
+        {
+            ServerStatusText.Text = "Server Offline";
+            ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            SptServerStatusText.Text = "Server Offline";
+            SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+        }
+    }
+
     private async Task RefreshMods()
     {
         LaunchOrUpdateButton.IsEnabled = false;
@@ -180,13 +224,8 @@ public partial class MainWindow
 
         if (serverMods.Count == 0)
         {
-            ServerStatusText.Text = "Server Offline";
-            ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
             return;
         }
-
-        ServerStatusText.Text = "Server Online";
-        ServerStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
 
         var statusList = CompareMods(serverMods, localMods);
         ModListView.ItemsSource = statusList;
@@ -734,8 +773,8 @@ public partial class MainWindow
         // Set status to checking
         ServerStatusText.Text = "Checking...";
         ServerStatusText.Foreground = System.Windows.Media.Brushes.Gray;
-        // Refresh mods to check server status
-        _ = RefreshMods();
+        // Check server status
+        _ = CheckServerStatus();
     }
 
     private void ConfigureServerButton_Click(object sender, RoutedEventArgs e)
@@ -963,6 +1002,22 @@ public partial class MainWindow
                 Debug.WriteLine($"Failed to load launcher settings: {ex.Message}");
             }
         }
+    }
+
+    private DispatcherTimer? _serverCheckTimer;
+
+    private void InitializeServerCheckTimer()
+    {
+        _serverCheckTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMinutes(5)
+        };
+        _serverCheckTimer.Tick += async (s, e) =>
+        {
+            // Check server status
+            await CheckServerStatus();
+        };
+        _serverCheckTimer.Start();
     }
 }
 
