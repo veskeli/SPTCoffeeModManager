@@ -26,6 +26,22 @@ public partial class MainWindow
     // store exe directory and config path
     private readonly string? _configPath;
 
+    // Excluded mod names and folders (fetched from server as well)
+    private List<string> _excludedMods = new List<string>
+    {
+        "spt-common", "spt-core", "spt-custom", "spt-debugging",
+        "spt-reflection", "spt-singleplayer", "Fika.Core", "Fika.Headless"
+    };
+    private List<string> _excludedModFolders = new List<string>
+    {
+        "spt", "fika"
+    };
+    private List<string> _excludedConfigs = new List<string>
+    {
+        "BepInEx.cfg", "com.bepis.bepinex.configurationmanager.cfg",
+        "com.fika.core.cfg", "com.fika.headless.cfg"
+    };
+
     public MainWindow()
     {
         try
@@ -67,6 +83,9 @@ public partial class MainWindow
             {
                 CheckIfSecretIsValid(_secret);
             }
+
+            // Fetch launcher settings
+            await FetchLauncherSettings();
         };
     }
 
@@ -95,16 +114,8 @@ public partial class MainWindow
             return mods;
 
         // Excluded mod names and folders (same as server)
-        var excludedMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "spt-common", "spt-core", "spt-custom", "spt-debugging",
-            "spt-reflection", "spt-singleplayer", "Fika.Core", "Fika.Headless"
-        };
-
-        var excludedModFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "spt", "fika"
-        };
+        var excludedMods = new HashSet<string>(_excludedMods, StringComparer.OrdinalIgnoreCase);
+        var excludedModFolders = new HashSet<string>(_excludedModFolders, StringComparer.OrdinalIgnoreCase);
 
         var processedMods = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -119,8 +130,9 @@ public partial class MainWindow
             if (dllFiles.Length == 0)
                 continue;
 
-            if (excludedMods.Contains(folderName) || processedMods.Contains(folderName))
-                continue;
+            // Don't process excluded or already processed mods (Some mods may contain e.g. Fika combability DLLs)
+            //if (excludedMods.Contains(folderName) || processedMods.Contains(folderName))
+                //continue;
 
             var version = FileVersionInfo.GetVersionInfo(dllFiles[0]).FileVersion ?? "0";
 
@@ -270,11 +282,7 @@ public partial class MainWindow
         if (!Directory.Exists(_pluginsConfigFolder))
             return configs;
 
-        var excludedConfigs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "BepInEx.cfg", "com.bepis.bepinex.configurationmanager.cfg",
-            "com.fika.core.cfg", "com.fika.headless.cfg"
-        };
+        var excludedConfigs = new HashSet<string>(_excludedConfigs, StringComparer.OrdinalIgnoreCase);
 
         var configFiles = Directory.GetFiles(_pluginsConfigFolder, "*.cfg", SearchOption.TopDirectoryOnly);
         foreach (var configFile in configFiles)
@@ -907,6 +915,29 @@ public partial class MainWindow
             MessageBox.Show($"Failed to send kill command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    private async Task FetchLauncherSettings()
+    {
+        var settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_settings.json");
+        if (File.Exists(settingsPath))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(settingsPath);
+                var settings = JsonSerializer.Deserialize<LauncherSettings>(json);
+                if (settings != null)
+                {
+                    _excludedMods = settings.ExcludedMods;
+                    _excludedModFolders = settings.ExcludedModFolders;
+                    _excludedConfigs = settings.ExcludedConfigs;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to load launcher settings: {ex.Message}");
+            }
+        }
+    }
 }
 
 // new: simple config DTO
@@ -949,4 +980,15 @@ public class AdminConfig
     public string Secret { get; set; } = ""; // Like password
     public bool IsEnabled { get; set; } = true; // So can be disabled without deleting
     public bool AllowHeadlessClose { get; set; } = false; // Whether this admin can close headless client
+}
+
+// Additional Launcher settings
+public class LauncherSettings
+{
+    // Excluded mods
+    public List<string> ExcludedMods { get; set; } = new List<string>();
+    // Excluded mods folders
+    public List<string> ExcludedModFolders { get; set; } = new List<string>();
+    // Excluded config files
+    public List<string> ExcludedConfigs { get; set; } = new List<string>();
 }
