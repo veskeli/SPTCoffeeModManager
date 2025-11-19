@@ -375,6 +375,26 @@ public partial class MainWindow
                             return;
                         }
                     }
+                    // Remember to check if enforced and found
+                    else if (serverConfig.IsEnforced && localConfig.LastModified != serverConfig.LastModified)
+                    {
+                        try
+                        {
+                            using var client = new HttpClient();
+                            var url = $"{BaseUrl}/configs/{Path.GetFileNameWithoutExtension(serverConfig.FileName)}";
+                            var data = await client.GetByteArrayAsync(url);
+
+                            var destPath = Path.Combine(_pluginsConfigFolder!, serverConfig.FileName);
+                            await File.WriteAllBytesAsync(destPath, data);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to download config {serverConfig.FileName}: {ex.Message}");
+                            MessageBox.Show($"Failed to download config {serverConfig.FileName}: {ex.Message}",
+                                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                    }
                 }
             }
             // Download enforced configs if missing or outdated
@@ -385,7 +405,7 @@ public partial class MainWindow
                     var localConfig = localConfigs.FirstOrDefault(c =>
                         string.Equals(c.FileName, serverConfig.FileName, StringComparison.OrdinalIgnoreCase));
 
-                    if (localConfig == null || localConfig.LastModified < serverConfig.LastModified)
+                    if (localConfig == null || localConfig.LastModified != serverConfig.LastModified)
                     {
                         try
                         {
