@@ -890,6 +890,12 @@ public partial class MainWindow
             MessageBox.Show("Server is not online. Cannot send shutdown command.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
+
+        // Prompt for confirmation
+        var result = MessageBox.Show("Are you sure you want to send shutdown command to the headless server?", "Confirm Shutdown", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes)
+            return;
+
         // Check if headless server is running /admin/headless/running with secret
         using var clientCheck = new HttpClient();
         try
