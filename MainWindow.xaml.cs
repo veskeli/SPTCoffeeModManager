@@ -13,15 +13,15 @@ namespace SPTCoffeeModManager;
 /// </summary>
 public partial class MainWindow
 {
-    private string? _modsFolder;
-    private string? _pluginsConfigFolder;
-    private string? _clientPath;
-    private string? _secret;
+    private readonly string? _modsFolder;
+    private readonly string? _pluginsConfigFolder;
+    private readonly string? _clientPath;
 
     // IP/Port of your server console
     private string _serverIp = "127.0.0.1";
     private int _serverPort = 25569;
     private string _sptServerAddress = "http://127.0.0.1:6969";
+    private string _secret = "";
 
     // store exe directory and config path
     private readonly string? _configPath;
@@ -712,7 +712,7 @@ public partial class MainWindow
 
     private void ConfigureServerButton_Click(object sender, RoutedEventArgs e)
     {
-        var serverConfigWindow = new ServerConfigWindow(_serverIp, _serverPort);
+        var serverConfigWindow = new ServerConfigWindow(_serverIp, _serverPort, _sptServerAddress, _secret);
         if (serverConfigWindow.ShowDialog() == true)
         {
             _serverIp = serverConfigWindow.ServerIp;
