@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SPTCoffeeModManager"
         mc:Ignorable="d"
         Background="#1e1e1e" Foreground="White"
-        Title="ServerConfigWindow" Height="320" Width="450"
+        Title="ServerConfigWindow" Height="410" Width="450"
         ResizeMode="NoResize" WindowStyle="None" WindowStartupLocation="CenterScreen">
     <Grid Margin="0">
         <Grid.RowDefinitions>
@@ -67,6 +67,25 @@
                          Background="#2b2b2b"
                          BorderBrush="#3a3a3a"
                          Foreground="White" />
+                <!-- Secret Key -->
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Secret Key" Margin="0,12,0,4" Foreground="White" />
+                    <Button Content="Toggle Visibility"
+                            Click="ToggleSecretKeyVisibilityButton_Click"
+                            Width="120"
+                            Height="24"
+                            Margin="10,12,0,4"
+                            Background="DarkCyan"
+                            Foreground="White"
+                            BorderBrush="#3c3c3c"
+                            Visibility="Collapsed"/>
+                </StackPanel>
+                <PasswordBox x:Name="SecretKeyTextBox"
+                             Height="30"
+                             Margin="0,6,0,0"
+                             Background="#2b2b2b"
+                             BorderBrush="#3a3a3a"
+                             Foreground="White" />
             </StackPanel>
         </Grid>
 

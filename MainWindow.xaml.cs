@@ -2,7 +2,6 @@
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
-using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
@@ -14,9 +13,10 @@ namespace SPTCoffeeModManager;
 /// </summary>
 public partial class MainWindow
 {
-    private readonly string? _modsFolder;
-    private readonly string? _pluginsConfigFolder;
-    private readonly string? _clientPath;
+    private string? _modsFolder;
+    private string? _pluginsConfigFolder;
+    private string? _clientPath;
+    private string? _secret;
 
     // IP/Port of your server console
     private string _serverIp = "127.0.0.1";
@@ -61,6 +61,12 @@ public partial class MainWindow
 
             await RefreshPluginConfigs();
             await RefreshMods();
+
+            // if secret is set, validate it on server and update admin status
+            if (!string.IsNullOrWhiteSpace(_secret))
+            {
+                CheckIfSecretIsValid(_secret);
+            }
         };
     }
 
@@ -711,6 +717,11 @@ public partial class MainWindow
         {
             _serverIp = serverConfigWindow.ServerIp;
             _serverPort = serverConfigWindow.ServerPort;
+            _sptServerAddress = serverConfigWindow.SptServerAddress;
+            _secret = serverConfigWindow.SecretKey;
+
+            // Validate secret on server
+            _secret = CheckIfSecretIsValid(_secret);
 
             // Save updated config to exe folder
             SaveConfig();
@@ -737,6 +748,8 @@ public partial class MainWindow
                     _serverPort = cfg.ServerPort;
                 if (!string.IsNullOrWhiteSpace(cfg.SptServerAddress))
                     _sptServerAddress = cfg.SptServerAddress;
+                if (!string.IsNullOrWhiteSpace(cfg.Secret))
+                    _secret = cfg.Secret;
             }
         }
         catch (Exception ex)
@@ -753,13 +766,145 @@ public partial class MainWindow
             if (string.IsNullOrEmpty(_configPath))
                 return;
 
-            var cfg = new AppConfig { ServerIp = _serverIp, ServerPort = _serverPort, SptServerAddress = _sptServerAddress};
+            var cfg = new AppConfig { ServerIp = _serverIp, ServerPort = _serverPort, SptServerAddress = _sptServerAddress, Secret = _secret};
             var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_configPath, json);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Failed to save config: {ex.Message}");
+        }
+    }
+
+    private string? CheckIfSecretIsValid(string? secretKey)
+    {
+        if (!string.IsNullOrWhiteSpace(secretKey))
+        {
+            using var client = new HttpClient();
+            try
+            {
+                var url = $"{BaseUrl}/admin/validate?secret={secretKey}";
+                try
+                {
+                    var response = client.GetStringAsync(url).Result?.Trim();
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        try
+                        {
+                            // Expecting server to return an AdminConfig JSON; fall back to plain true/false
+                            var admin = JsonSerializer.Deserialize<AdminConfig>(response);
+                            if (admin != null && admin.IsEnabled)
+                            {
+                                Debug.WriteLine("Admin secret validated successfully.");
+                                if (string.IsNullOrWhiteSpace(admin.Secret))
+                                    admin.Secret = secretKey;
+                                UpdateAdminStatus(admin);
+                            }
+                            else
+                            {
+                                MessageBox.Show("Admin secret is invalid on the server.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                                secretKey = ""; // clear invalid secret
+                            }
+                        }
+                        catch
+                        {
+                            // Fallback: server returned "true" or "false"
+                            if (string.Equals(response, "true", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Debug.WriteLine("Admin secret validated successfully.");
+                                UpdateAdminStatus(new AdminConfig { Secret = secretKey, IsEnabled = true });
+                            }
+                            else
+                            {
+                                MessageBox.Show("Admin secret is invalid on the server.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                                secretKey = ""; // clear invalid secret
+                            }
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Admin secret is invalid on the server.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        secretKey = ""; // clear invalid secret
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to validate admin secret: {ex.Message}");
+                    MessageBox.Show($"Failed to validate admin secret: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to validate admin secret: {ex.Message}");
+                MessageBox.Show($"Failed to validate admin secret: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        return secretKey;
+    }
+
+    private void UpdateAdminStatus(AdminConfig config)
+    {
+        // Enable or disable admin features based on config
+        KillHeadlessButton.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void KillServer_Click(object sender, RoutedEventArgs e)
+    {
+        // Check if secret is set
+        if (string.IsNullOrWhiteSpace(_secret))
+        {
+            MessageBox.Show("Admin secret is not set. Please configure the server settings first.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        // Check if the server is online
+        if (ServerStatusText.Text != "Server Online")
+        {
+            MessageBox.Show("Server is not online. Cannot send shutdown command.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        // Check if headless server is running /admin/headless/running with secret
+        using var clientCheck = new HttpClient();
+        try
+        {
+            var urlCheck = $"{BaseUrl}/admin/headless/running?secret={_secret}";
+            var responseCheck = clientCheck.GetStringAsync(urlCheck).Result?.Trim();
+            if (!string.Equals(responseCheck, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Headless server is not running. Cannot send shutdown command.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to check headless server status: {ex.Message}");
+            MessageBox.Show($"Failed to check headless server status: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // Send command to server /admin/headless/close with secret
+        using var client = new HttpClient();
+        try
+        {
+            var url = $"{BaseUrl}/admin/headless/close?secret={_secret}";
+            var response = client.GetStringAsync(url).Result?.Trim();
+
+            if (string.Equals(response, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Server shutdown command sent.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else if (string.Equals(response, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show("Server cooldown active. Please wait before trying again.", "Info", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                MessageBox.Show($"Failed to send kill command. Server response: {response}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to send kill command: {ex.Message}");
+            MessageBox.Show($"Failed to send kill command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
@@ -770,6 +915,7 @@ public class AppConfig
     public string? ServerIp { get; set; }
     public int ServerPort { get; set; }
     public string? SptServerAddress { get; set; }
+    public string? Secret { get; set; } // Admin secret for server control
 }
 
 public class ModEntry
@@ -794,4 +940,13 @@ public class ModStatusEntry
     public required string ServerVersion { get; set; }
     public string? Status { get; set; }
     public required bool IsFolderMod { get; set; }
+}
+
+// Admin config so launcher can authenticate admin commands. Array of these in JSON so multiple admins can be set up.
+public class AdminConfig
+{
+    public string Note { get; set; } = ""; // For easy edit, e.g. "My own pc"
+    public string Secret { get; set; } = ""; // Like password
+    public bool IsEnabled { get; set; } = true; // So can be disabled without deleting
+    public bool AllowHeadlessClose { get; set; } = false; // Whether this admin can close headless client
 }

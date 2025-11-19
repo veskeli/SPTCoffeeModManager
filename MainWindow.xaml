@@ -46,12 +46,19 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Server Status: " FontWeight="Bold" Foreground="White" FontSize="18" Margin="0,0,8,0" />
-                    <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="Gray" FontSize="18" />
+                    <!-- Server Status Text -->
+                    <TextBlock Text="Server Status: " FontWeight="Bold" Foreground="White" FontSize="16" Margin="0,0,8,0" />
+                    <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="Gray" FontSize="16" />
+                    <!-- Headless Server Status Text (Admin only) -->
+                    <TextBlock Name="HeadlessStatusTextLabel" Text="Headless Status: " FontWeight="Bold" Foreground="White" FontSize="16" Visibility="Collapsed" Margin="10,0,8,0" />
+                    <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="Gray" FontSize="16" Visibility="Collapsed" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
-                    <Button Name="CheckServerButton" Content="Check Server status" Width="120" Height="25" Margin="0,0,0,0"
+                    <!-- Kill Headless Server Button (Admin only) -->
+                    <Button Name="KillHeadlessButton" Content="K" Width="25" Margin="0,0,10,0"
+                            Background="#ff6e6e" Foreground="White" BorderBrush="#3c3c3c" Click="KillServer_Click" Visibility="Collapsed"/>
+                    <Button Name="RefreshButton" Content="⟳" Width="25" Height="25" Margin="0,0,0,0"
                             Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="CheckServerButton_Click"/>
                     <Button Name="ConfigureServerButton" Content="Configure Server" Width="120" Margin="10,0,0,0"
                             Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="ConfigureServerButton_Click"/>
@@ -109,12 +116,14 @@
         </StackPanel>
 
         <!-- Action Buttons -->
-        <Grid Grid.Row="2" Margin="0,10,10,10" Height="50">
-            <StackPanel Orientation="Vertical" HorizontalAlignment="Left" Margin="10,0,0,0">
-                <TextBlock Name="StatusTextBlock" Text="" VerticalAlignment="Center" Foreground="White" FontSize="13" />
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0">
-                    <TextBlock Text="Config sync status: " VerticalAlignment="Center" Foreground="White" FontSize="12" Margin="0,0,5,0" />
-                    <TextBlock Name="SyncStatusText" Text="Checking..." VerticalAlignment="Center" Foreground="Gray" FontSize="12" />
+        <Grid Grid.Row="2" Margin="0,5,10,5" Height="35">
+
+            <!-- Left side status and sync info -->
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,0">
+                <TextBlock Name="StatusTextBlock" Text="" VerticalAlignment="Top" Foreground="White" FontSize="13" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,8,0,0">
+                    <TextBlock Text="Config sync status: " Foreground="White" FontSize="12" Margin="0,0,5,0" />
+                    <TextBlock Name="SyncStatusText" Text="Checking..." Foreground="Gray" FontSize="12" />
                 </StackPanel>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Height="30">
