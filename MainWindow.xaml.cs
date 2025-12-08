@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace SPTCoffeeModManager;
 
@@ -26,6 +27,8 @@ public partial class MainWindow
 
     // store exe directory and config path
     private readonly string? _configPath;
+
+    private HubConnection? _hubConnection;
 
     // Excluded mod names and folders (fetched from server as well)
     private List<string> _excludedMods = new List<string>
@@ -93,7 +96,113 @@ public partial class MainWindow
 
             // Check server status on load
             await CheckServerStatus();
+
+            // Check SPT version compatibility
+            await CheckSptVersion();
+
+            // Start server notifier
+            await InitializeSignalR();
         };
+    }
+
+    private async Task InitializeSignalR()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl($"{BaseUrl}/hub")
+            .WithAutomaticReconnect()
+            .Build();
+
+        // On various server notifications
+        _hubConnection.On<string>("ServerRestarting", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[SERVER NOTICE] " + message);
+                ServerStatusText.Text = "Restarting...";
+                ServerStatusText.Foreground = System.Windows.Media.Brushes.Orange;
+            });
+        });
+
+        _hubConnection.On<string>("SptServerOffline", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[SPT NOTICE] " + message);
+                SptServerStatusText.Text = "Offline";
+                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            });
+        });
+
+        _hubConnection.On<string>("SptServerOnline", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[SPT NOTICE] " + message);
+                SptServerStatusText.Text = "Online";
+                SptServerStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+            });
+        });
+
+        _hubConnection.On<string>("SptServerRestarting", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[SPT NOTICE] " + message);
+                SptServerStatusText.Text = "Restarting...";
+                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Orange;
+            });
+        });
+
+        _hubConnection.On<string>("SptServerUpdating", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[SPT NOTICE] " + message);
+                SptServerStatusText.Text = "Updating...";
+                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Aqua;
+            });
+        });
+
+        _hubConnection.On<string>("HeadlessOffline", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[HEADLESS NOTICE] " + message);
+                HeadlessStatusText.Text = "Offline";
+                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            });
+        });
+
+        _hubConnection.On<string>("HeadlessOnline", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[HEADLESS NOTICE] " + message);
+                HeadlessStatusText.Text = "Online";
+                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+            });
+        });
+
+        // On headless restarted
+        _hubConnection.On<string>("HeadlessRestarted", (message) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                Console.WriteLine("[SERVER NOTICE] " + message);
+                HeadlessStatusText.Text = "Restarting...";
+                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Orange;
+            });
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+            Dispatcher.Invoke(() => Console.WriteLine("Connected to server notifications"));
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.Invoke(() => MessageBox.Show("SignalR connection failed:\n" + ex.Message));
+        }
     }
 
     private string BaseUrl => $"http://{_serverIp}:{_serverPort}";
@@ -178,6 +287,73 @@ public partial class MainWindow
         return mods;
     }
 
+    private async Task CheckSptVersion()
+    {
+        try
+        {
+            // Load current spt version
+            if (_modsFolder != null)
+            {
+                using var client = new HttpClient();
+                var response = await client.GetAsync($"{BaseUrl}/spt/version");
+                var bNotSuccessful = true;
+
+                var sptCoreDll = Path.Combine(_modsFolder, "spt","spt-core.dll");
+                if (File.Exists(sptCoreDll))
+                {
+                    var versionInfo = FileVersionInfo.GetVersionInfo(sptCoreDll);
+                    CurrentSptVersionText.Text = $"{versionInfo.FileVersion}";
+                    CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.Aqua;
+                    bNotSuccessful = false;
+                }
+
+                if (response.IsSuccessStatusCode)
+                {
+                    string verText = "0.0.0.0";
+                    try
+                    {
+                        var responseText = await response.Content.ReadAsStringAsync();
+                        // Server returns a JSON string like "1.2.3.4"
+                        verText = JsonSerializer.Deserialize<string>(responseText) ?? responseText.Trim().Trim('"');
+                    }
+                    catch
+                    {
+                        verText = "0.0.0.0";
+                    }
+
+                    if (!Version.TryParse(verText, out Version? version))
+                    {
+                        version = new Version(0, 0, 0, 0);
+                    }
+
+                    // Check if the server is newer than local
+                    var localSptVersion = new Version(CurrentSptVersionText.Text);
+                    if (version > localSptVersion)
+                    {
+                        CurrentSptVersionText.Text = $"{localSptVersion} (Outdated)";
+                        CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.Red;
+                    }
+                    else
+                    {
+                        CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.LightGreen;
+                    }
+
+                    bNotSuccessful = false;
+                }
+
+                if(bNotSuccessful)
+                {
+                    CurrentSptVersionText.Text = "Unknown";
+                    CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.Red;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
     private async Task CheckServerStatus()
     {
         try
@@ -187,31 +363,64 @@ public partial class MainWindow
             // If response is successful, server is online
             if (response.IsSuccessStatusCode)
             {
-                ServerStatusText.Text = "Server Online";
+                ServerStatusText.Text = "Online";
                 ServerStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
 
                 // Response returns true and false based on SPT server status so we can use it to update that
                 var content = await response.Content.ReadAsStringAsync();
                 if (bool.TryParse(content.Trim(), out bool isServerRunning))
                 {
-                    SptServerStatusText.Text = isServerRunning ? "Server Online" : "Server Offline";
+                    SptServerStatusText.Text = isServerRunning ? "Online" : "Offline";
                     SptServerStatusText.Foreground = isServerRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
                 }
             }
             else
             {
-                ServerStatusText.Text = "Server Offline";
+                ServerStatusText.Text = "Offline";
                 ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
-                SptServerStatusText.Text = "Server Offline";
+                SptServerStatusText.Text = "Offline";
                 SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
             }
+
+            // Headless server status
+            await CheckHeadlessServerStatus();
         }
         catch
         {
-            ServerStatusText.Text = "Server Offline";
+            ServerStatusText.Text = "Offline";
             ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
-            SptServerStatusText.Text = "Server Offline";
+            SptServerStatusText.Text = "Offline";
             SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+        }
+    }
+
+    private async Task CheckHeadlessServerStatus()
+    {
+        try
+        {
+            var client = new HttpClient();
+            // Get headless status
+            var responseHeadless = await client.GetAsync($"{BaseUrl}/headless/running");
+            if (responseHeadless.IsSuccessStatusCode)
+            {
+                var content = await responseHeadless.Content.ReadAsStringAsync();
+                if (bool.TryParse(content.Trim(), out bool isHeadlessRunning))
+                {
+                    HeadlessStatusText.Text = isHeadlessRunning ? "Online" : "Offline";
+                    HeadlessStatusText.Foreground = isHeadlessRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
+                }
+            }
+            else
+            {
+                HeadlessStatusText.Text = "Offline";
+                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine($"Error checking headless server status: {e.Message}");
+            HeadlessStatusText.Text = "Offline";
+            HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Red;
         }
     }
 
@@ -580,6 +789,8 @@ public partial class MainWindow
                 var tempZip = Path.Combine(Path.GetTempPath(), modInfo.FileName);
                 if (File.Exists(tempZip)) File.Delete(tempZip);
 
+                // If download states are not supported, fallback to simple download
+                mod.Status = "Downloading...";
                 using (var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
                 {
                     response.EnsureSuccessStatusCode();
@@ -793,7 +1004,9 @@ public partial class MainWindow
             // Save updated config to exe folder
             SaveConfig();
 
+            // Refresh mods and server status
             _ = RefreshMods();
+            _ = CheckServerStatus();
         }
     }
 
@@ -924,7 +1137,7 @@ public partial class MainWindow
             return;
         }
         // Check if the server is online
-        if (ServerStatusText.Text != "Server Online")
+        if (ServerStatusText.Text != "Online")
         {
             MessageBox.Show("Server is not online. Cannot send shutdown command.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             return;

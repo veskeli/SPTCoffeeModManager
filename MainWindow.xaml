@@ -47,14 +47,14 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- Server Status Text -->
-                    <TextBlock Text="Server Status: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="0,0,8,0" />
+                    <TextBlock Text="Server: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="0,0,8,0" />
                     <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
                     <!-- SPT Server Status Text -->
-                    <TextBlock Name="SptServerStatusTextLabel" Text="SPT Server Status: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="10,0,8,0" />
+                    <TextBlock Name="SptServerStatusTextLabel" Text="SPT Server: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="10,0,8,0" />
                     <TextBlock Name="SptServerStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
-                    <!-- Headless Server Status Text (Admin only) -->
-                    <TextBlock Name="HeadlessStatusTextLabel" Text="Headless Status: " FontWeight="Bold" Foreground="White" FontSize="13" Visibility="Collapsed" Margin="10,0,8,0" />
-                    <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="Gray" FontSize="13" Visibility="Collapsed" />
+                    <!-- Headless Server Status Text -->
+                    <TextBlock Name="HeadlessStatusTextLabel" Text="Headless: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="10,0,8,0" />
+                    <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
@@ -125,8 +125,12 @@
             <StackPanel Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,0">
                 <TextBlock Name="StatusTextBlock" Text="" VerticalAlignment="Top" Foreground="White" FontSize="13"/>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,8,0,0">
+                    <!-- Config sync status -->
                     <TextBlock Text="Config sync status: " Foreground="White" FontSize="12" Margin="0,0,5,0" />
                     <TextBlock Name="SyncStatusText" Text="Checking..." Foreground="Gray" FontSize="12" />
+                    <!-- Current spt version -->
+                    <TextBlock Text="Current SPT version: " Foreground="White" FontSize="12" Margin="30,0,5,0" />
+                    <TextBlock Name="CurrentSptVersionText" Text="Checking..." Foreground="Gray" FontSize="12" />
                 </StackPanel>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Height="30">
