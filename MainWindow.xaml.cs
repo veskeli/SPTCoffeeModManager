@@ -35,16 +35,16 @@ public partial class MainWindow
     private List<string> _excludedMods = new List<string>
     {
         "spt-common", "spt-core", "spt-custom", "spt-debugging",
-        "spt-reflection", "spt-singleplayer", "Fika.Core", "Fika.Headless"
+        "spt-reflection", "spt-singleplayer", "Fika.Headless"
     };
     private List<string> _excludedModFolders = new List<string>
     {
-        "spt", "fika"
+        "spt"
     };
     private List<string> _excludedConfigs = new List<string>
     {
         "BepInEx.cfg", "com.bepis.bepinex.configurationmanager.cfg",
-        "com.fika.core.cfg", "com.fika.headless.cfg"
+        "com.fika.headless.cfg"
     };
 
     public MainWindow()
@@ -1243,6 +1243,12 @@ public partial class MainWindow
                 var settings = JsonSerializer.Deserialize<LauncherSettings>(json);
                 if (settings != null)
                 {
+                    // Clear existing excluded lists
+                    _excludedMods.Clear();
+                    _excludedModFolders.Clear();
+                    _excludedConfigs.Clear();
+
+                    // Set as excluded lists
                     _excludedMods = settings.ExcludedMods;
                     _excludedModFolders = settings.ExcludedModFolders;
                     _excludedConfigs = settings.ExcludedConfigs;
