@@ -19,18 +19,6 @@ public partial class UpdateWindow : Window
             this.DragMove();
     }
 
-    // Minimize the window
-    private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-    {
-        this.WindowState = WindowState.Minimized;
-    }
-
-    // Close the window
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        this.Close();
-    }
-
     private async void UpdateButton_Click(object sender, RoutedEventArgs e)
     {
         StatusText.Text = "Updating... Please wait.";

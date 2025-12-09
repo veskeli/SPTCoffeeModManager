@@ -16,7 +16,10 @@ public partial class App : Application
         bool isUpdateAvailable = await UpdaterService.IsUpdateAvailableAsync();
         if (isUpdateAvailable)
         {
-            var updateWindow = new UpdateWindow();
+            var updateWindow = new UpdateWindow
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterScreen
+            };
             updateWindow.Show();
             return;
         }

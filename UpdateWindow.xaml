@@ -15,24 +15,8 @@
             <RowDefinition Height="Auto" />    <!-- Button/Footer -->
         </Grid.RowDefinitions>
         <!-- Header -->
-        <Border Grid.Row="0" Background="#232323" Height="40" MouseDown="Header_MouseDown" Margin="0,0,0,10">
-            <Grid>
-                <TextBlock Text="Update Available"
-                           FontSize="24"
-                           FontWeight="Bold"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="White" />
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
-                    <Button Content="—" Width="30" Height="30" Margin="0,0,5,0"
-                            Click="MinimizeButton_Click"
-                            Background="Transparent" Foreground="White" BorderBrush="Transparent" />
-                    <Button Content="✕" Width="30" Height="30"
-                            Click="CloseButton_Click"
-                            Background="Transparent" Foreground="White" BorderBrush="Transparent" />
-                </StackPanel>
-            </Grid>
-        </Border>
+        <local:WindowHeader Grid.Row="0" HeaderText="Update Available" />
+
         <TextBlock x:Name="StatusText"
                    Grid.Row="1"
                    Text="New Update Available!"

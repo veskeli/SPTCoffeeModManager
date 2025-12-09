@@ -18,6 +18,7 @@ public partial class MainWindow
     private readonly string? _modsFolder;
     private readonly string? _pluginsConfigFolder;
     private readonly string? _clientPath;
+    private string _basePath = "";
 
     // IP/Port of your server console
     private string _serverIp = "127.0.0.1";
@@ -57,6 +58,8 @@ public partial class MainWindow
 
             // store exe directory and config path
             _configPath = Path.Combine(exeDir, "coffee_manager_server_config.json");
+
+            _basePath = exeDir;
         }
         catch
         {
@@ -332,6 +335,14 @@ public partial class MainWindow
                     {
                         CurrentSptVersionText.Text = $"{localSptVersion} (Outdated)";
                         CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.Red;
+
+                        // Set play button to update
+                        LaunchOrUpdateButton.Content = "Update SPT";
+                        var updateSpt = MessageBox.Show("A new SPT version is required. Would you like to update?", "Update Required", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                        if (updateSpt == MessageBoxResult.Yes)
+                        {
+                            SptNeedsUpdate();
+                        }
                     }
                     else
                     {
@@ -352,6 +363,31 @@ public partial class MainWindow
         {
             Console.WriteLine(e);
         }
+    }
+
+    private void SptNeedsUpdate()
+    {
+        // Set play button to update
+        LaunchOrUpdateButton.Content = "Update SPT";
+
+        // Don't open multiple updater windows
+        foreach (Window w in Application.Current.Windows)
+        {
+            if (w is SPTUpdater)
+                return;
+        }
+
+        var updateWindow = new SPTUpdater(BaseUrl, _basePath)
+        {
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        // Hide the main window while updater is visible and show it again when updater closes
+        this.Hide();
+        updateWindow.Closed += (_, _) => this.Show();
+
+        updateWindow.Show();
     }
 
     private async Task CheckServerStatus()
@@ -589,6 +625,13 @@ public partial class MainWindow
     {
         try
         {
+            // If SPT needs update, open updater window
+            if (LaunchOrUpdateButton.Content.ToString() == "Update SPT")
+            {
+                SptNeedsUpdate();
+                return;
+            }
+
             // Sync configs
             StatusTextBlock.Text = "Syncing config files...";
             var serverConfigs = await GetServerConfigsAsync();
@@ -965,18 +1008,6 @@ public partial class MainWindow
     {
         if (e.ChangedButton == MouseButton.Left)
             this.DragMove();
-    }
-
-    // Minimize the window
-    private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-    {
-        this.WindowState = WindowState.Minimized;
-    }
-
-    // Close the window
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        this.Close();
     }
 
     private void CheckServerButton_Click(object sender, RoutedEventArgs e)
