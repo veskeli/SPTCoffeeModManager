@@ -385,7 +385,14 @@ public partial class MainWindow
 
         // Hide the main window while updater is visible and show it again when updater closes
         this.Hide();
-        updateWindow.Closed += (_, _) => this.Show();
+        updateWindow.Closed += async (_, _) =>
+        {
+            this.Show();
+            // Recheck SPT version after update
+            await CheckSptVersion();
+            // Check mods again in case SPT update included mod updates and it will update the button state
+            await RefreshMods();
+        };
 
         updateWindow.Show();
     }
