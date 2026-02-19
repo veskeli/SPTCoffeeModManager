@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -68,6 +69,24 @@ public partial class MainWindow
         }
 
         InitializeComponent();
+
+        // Wire up event handlers
+        if (HomeTabContent != null)
+        {
+            HomeTabContent.RefreshButtonRef.Click += CheckServerButton_Click;
+            HomeTabContent.CheckUpdatesButtonRef.Click += CheckUpdates_Click;
+            HomeTabContent.LaunchOrUpdateButtonRef.Click += LaunchOrUpdate_Click;
+            HomeTabContent.KillHeadlessButtonRef.Click += KillServer_Click;
+        }
+        if (ModsTabContent != null)
+        {
+            ModsTabContent.RefreshModsButtonRef.Click += CheckServerButton_Click;
+            ModsTabContent.CheckForModsButtonRef.Click += CheckServerButton_Click;
+        }
+        if (SettingsTabContent != null)
+        {
+            SettingsTabContent.ConfigureServerButtonRef.Click += ConfigureServerButton_Click;
+        }
 
         // Load saved server config if present
         LoadConfig();
@@ -1336,6 +1355,25 @@ public partial class MainWindow
     {
         return (System.Windows.Media.Brush)Application.Current.Resources[key];
     }
+
+    // Helper properties to access tab controls
+    private TextBlock ServerStatusText => HomeTabContent.ServerStatusTextBlock;
+    private TextBlock SptServerStatusText => HomeTabContent.SptServerStatusTextBlock;
+    private TextBlock HeadlessStatusText => HomeTabContent.HeadlessStatusTextBlock;
+    private TextBlock SyncStatusText => HomeTabContent.SyncStatusTextBlock;
+    private TextBlock CurrentSptVersionText => HomeTabContent.CurrentSptVersionTextBlock;
+    private TextBlock StatusTextBlock => HomeTabContent.StatusMessageTextBlock;
+    private Button KillHeadlessButton => HomeTabContent.KillHeadlessButtonRef;
+    private Button RefreshButton => HomeTabContent.RefreshButtonRef;
+    private Button CheckUpdatesButton => HomeTabContent.CheckUpdatesButtonRef;
+    private Button LaunchOrUpdateButton => HomeTabContent.LaunchOrUpdateButtonRef;
+
+    private ListView ModListView => ModsTabContent.ModListViewRef;
+    private Button RefreshModsButton => ModsTabContent.RefreshModsButtonRef;
+    private Button CheckForModsButton => ModsTabContent.CheckForModsButtonRef;
+
+    private Button ConfigureServerButton => SettingsTabContent.ConfigureServerButtonRef;
+
 }
 
 // new: simple config DTO
