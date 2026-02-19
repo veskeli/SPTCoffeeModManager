@@ -22,7 +22,7 @@
         <!-- Main Content with Vertical Tab Control -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="130" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -39,10 +39,15 @@
 
                 <Button Name="HomeTabButton"
                         Height="40"
+                        Width="Auto"
+                        HorizontalAlignment="Left"
                         Background="{DynamicResource BrushAccent}"
                         BorderThickness="0"
                         Click="HomeTab_Click"
-                        Cursor="Hand">
+                        Cursor="Hand"
+                        Margin="10,5,10,5"
+                        HorizontalContentAlignment="Left"
+                        Padding="10,4,10,4">
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
 
@@ -55,7 +60,7 @@
 
                         <!-- HOME TEXT -->
                         <TextBlock Text="Home"
-                                   FontSize="14"
+                                   FontSize="13"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0"
@@ -65,10 +70,15 @@
                 </Button>
                 <Button Name="ModsTabButton"
                         Height="40"
+                        Width="Auto"
+                        HorizontalAlignment="Left"
                         Background="{DynamicResource BrushSurface1}"
                         BorderThickness="0"
                         Click="ModsTab_Click"
-                        Cursor="Hand">
+                        Cursor="Hand"
+                        Margin="10,5,10,5"
+                        HorizontalContentAlignment="Left"
+                        Padding="10,4,10,4">
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
 
@@ -79,7 +89,7 @@
 
                         <!-- MODS TEXT -->
                         <TextBlock Text="Mods"
-                                   FontSize="14"
+                                   FontSize="13"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0"
@@ -89,10 +99,16 @@
                 </Button>
                 <Button Name="SettingsTabButton"
                         Height="40"
+                        Width="Auto"
+                        HorizontalAlignment="Left"
                         Background="{DynamicResource BrushSurface1}"
                         BorderThickness="0"
-                        Click="SettingsTab_Click" Cursor="Hand">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        Click="SettingsTab_Click" Cursor="Hand"
+                        Margin="10,5,10,5"
+                        HorizontalContentAlignment="Left"
+                        Padding="10,4,10,4">
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
 
                         <!-- SETTINGS ICON -->
                         <Image Source="{StaticResource IconSettings}"
@@ -101,7 +117,7 @@
 
                         <!-- SETTINGS TEXT -->
                         <TextBlock Text="Settings"
-                                   FontSize="14"
+                                   FontSize="13"
                                    FontWeight="Bold"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0"

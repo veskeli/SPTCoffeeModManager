@@ -46,7 +46,7 @@
 
             <StackPanel Grid.Column="0" Margin="0,0,10,0" HorizontalAlignment="Left" Orientation="Vertical">
                 <!-- Header above the rounded Border so header and box start at the same left edge -->
-                <TextBlock Text="Quick Status" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="13" Margin="0,0,0,6" />
+                <TextBlock Text="Quick Status" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="12" Margin="0,0,0,6" />
 
                 <!-- Rounded container: Border provides CornerRadius -->
                 <Border Background="{DynamicResource BrushSurface1}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="10">
@@ -64,17 +64,17 @@
 
                         <!-- Top row: three server status panels (all font size 12, compact min widths) -->
                         <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,5,10,5">
-                            <TextBlock Text="Mod Manager Server: " Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,8,0" />
+                            <TextBlock Text="Mod Manager Server: " FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,8,0" />
                             <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="12" MinWidth="60" MaxWidth="140" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,5,10,5">
-                            <TextBlock Text="SPT Server: " Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,8,0" />
+                            <TextBlock Text="SPT Server: " FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,8,0" />
                             <TextBlock Name="SptServerStatusText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="12" MinWidth="60" MaxWidth="140" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
                         <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,5,0,5">
-                            <TextBlock Text="Headless: " Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,8,0" />
+                            <TextBlock Text="Headless: " FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,8,0" />
                             <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="12" MinWidth="60" MaxWidth="140" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
@@ -103,4 +103,3 @@
 
     </Grid>
 </UserControl>
-
