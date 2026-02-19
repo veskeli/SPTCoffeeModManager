@@ -23,13 +23,6 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
-                <!-- KillHeadlessButton removed from this toolbar; it will live inside the Admin panel next to Mod Status -->
-                <Button Name="RefreshButton" Content="Check for server status" Height="25" Margin="0,0,10,0"
-                        Background="{DynamicResource SecondaryBrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}"/>
-                <Button Name="CheckUpdatesButton" Content="Check for mod updates" Width="170" Margin="0,0,10,0"
-                        Background="{DynamicResource SecondaryBrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" />
-            </StackPanel>
         </Grid>
 
         <!-- Header: Mod Status and Admin panel label aligned on same row -->
@@ -39,7 +32,13 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0" Text="Mod Status" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,0,6" VerticalAlignment="Center" />
+            <!-- Mod Status and Check for updates button grouped together on the left -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Mod Status" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,8,6" VerticalAlignment="Center" />
+                <Button Name="CheckUpdatesButton" Content="Check for mod updates" Width="150" Height="24" Margin="0,0,0,6"
+                        Background="{DynamicResource SecondaryBrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" />
+            </StackPanel>
+
             <TextBlock Grid.Column="1" Text="Admin panel" Name="AdminPanelText" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="12,0,0,6" VerticalAlignment="Center" />
         </Grid>
 
@@ -119,8 +118,12 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Margin="0,0,10,0" HorizontalAlignment="Left" Orientation="Vertical">
-                <!-- Header above the rounded Border so header and box start at the same left edge -->
-                <TextBlock Text="Quick Status" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="12" Margin="0,0,0,6" />
+                <!-- Quick Status header and refresh button grouped together -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,6">
+                    <TextBlock Text="Quick Status" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" />
+                    <Button Name="RefreshButton" Content="Check for server status" Height="24" Margin="0,0,0,0" Padding="8,0"
+                            Background="{DynamicResource SecondaryBrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" />
+                </StackPanel>
 
                 <!-- Rounded container: Border provides CornerRadius -->
                 <Border Background="{DynamicResource BrushSurface1}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="10">
