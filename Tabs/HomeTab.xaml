@@ -9,7 +9,7 @@
              Background="#121212">
     <Grid Margin="5">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />  <!-- Row 0: top toolbar -->
+            <RowDefinition Height="0" />  <!-- Row 0: Empty space for buttons -->
             <RowDefinition Height="Auto" />  <!-- Row 1: headers (Mod Status / Admin panel) -->
             <RowDefinition Height="*" />     <!-- Row 2: main two-column content -->
             <RowDefinition Height="Auto" />  <!-- Row 3: middle placeholder -->
