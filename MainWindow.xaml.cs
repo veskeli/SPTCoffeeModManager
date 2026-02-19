@@ -1276,6 +1276,69 @@ public partial class MainWindow
         };
         _serverCheckTimer.Start();
     }
+
+    /// <summary>
+    /// Switches to the Home tab and updates button styling
+    /// </summary>
+    private void HomeTab_Click(object sender, RoutedEventArgs e)
+    {
+        // Show Home tab content
+        HomeTabContent.Visibility = Visibility.Visible;
+        ModsTabContent.Visibility = Visibility.Collapsed;
+        SettingsTabContent.Visibility = Visibility.Collapsed;
+
+        // Update button styling
+        HomeTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 14, 99, 156));
+        HomeTabButton.FontWeight = FontWeights.Bold;
+
+        ModsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        ModsTabButton.FontWeight = FontWeights.Normal;
+
+        SettingsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        SettingsTabButton.FontWeight = FontWeights.Normal;
+    }
+
+    /// <summary>
+    /// Switches to the Mods tab and updates button styling
+    /// </summary>
+    private void ModsTab_Click(object sender, RoutedEventArgs e)
+    {
+        // Show Mods tab content
+        HomeTabContent.Visibility = Visibility.Collapsed;
+        ModsTabContent.Visibility = Visibility.Visible;
+        SettingsTabContent.Visibility = Visibility.Collapsed;
+
+        // Update button styling
+        HomeTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        HomeTabButton.FontWeight = FontWeights.Normal;
+
+        ModsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 14, 99, 156));
+        ModsTabButton.FontWeight = FontWeights.Bold;
+
+        SettingsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        SettingsTabButton.FontWeight = FontWeights.Normal;
+    }
+
+    /// <summary>
+    /// Switches to the Settings tab and updates button styling
+    /// </summary>
+    private void SettingsTab_Click(object sender, RoutedEventArgs e)
+    {
+        // Show Settings tab content
+        HomeTabContent.Visibility = Visibility.Collapsed;
+        ModsTabContent.Visibility = Visibility.Collapsed;
+        SettingsTabContent.Visibility = Visibility.Visible;
+
+        // Update button styling
+        HomeTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        HomeTabButton.FontWeight = FontWeights.Normal;
+
+        ModsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        ModsTabButton.FontWeight = FontWeights.Normal;
+
+        SettingsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 14, 99, 156));
+        SettingsTabButton.FontWeight = FontWeights.Bold;
+    }
 }
 
 // new: simple config DTO
