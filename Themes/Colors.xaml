@@ -75,6 +75,10 @@
     <SolidColorBrush x:Key="BrushDangerAlt" Color="{StaticResource Clr-Danger-A10}" />
     <SolidColorBrush x:Key="BrushInfoAlt" Color="{StaticResource Clr-Info-A10}" />
 
+    <SolidColorBrush x:Key="BrushAccentAlt" Color="{StaticResource Clr-Primary-A10}" />
+    <SolidColorBrush x:Key="SecondaryBrushAccent" Color="{StaticResource Clr-Primary-A30}" />
+    <SolidColorBrush x:Key="SecondaryBrushAccentAlt" Color="{StaticResource Clr-Primary-A40}" />
+
     <!-- Dynamic Brushes for icons and other elements that may need to adapt to theme changes -->
     <SolidColorBrush x:Key="BrushTabText" Color="{StaticResource Clr-Primary-A0}" />
 </ResourceDictionary>
