@@ -75,7 +75,6 @@ public partial class MainWindow
         SourceInitialized += (_, _) =>
         {
             var hwnd = new WindowInteropHelper(this).Handle;
-            // Prefer small rounding for subtle look
             _ = WindowCornerHelper.TrySetWindowCornerPreference(hwnd, WindowCornerHelper.DwmWindowCorner.Round);
         };
 
@@ -92,10 +91,7 @@ public partial class MainWindow
             ModsTabContent.RefreshModsButtonRef.Click += CheckServerButton_Click;
             ModsTabContent.CheckForModsButtonRef.Click += CheckServerButton_Click;
         }
-        if (SettingsTabContent != null)
-        {
-            SettingsTabContent.ConfigureServerButtonRef.Click += ConfigureServerButton_Click;
-        }
+        // Settings tab no longer exposes a Configure button; logic moved into the tab
 
         // Load saved server config if present
         LoadConfig();
@@ -468,8 +464,7 @@ public partial class MainWindow
     {
         try
         {
-            var client = new HttpClient();
-            // Get headless status
+            using var client = new HttpClient();
             var responseHeadless = await client.GetAsync($"{BaseUrl}/headless/running");
             if (responseHeadless.IsSuccessStatusCode)
             {
@@ -493,6 +488,10 @@ public partial class MainWindow
             HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Red;
         }
     }
+
+    // Public wrappers so SettingsTab can trigger these actions
+    public Task RefreshModsPublic() => RefreshMods();
+    public Task CheckServerStatusPublic() => CheckServerStatus();
 
     private async Task RefreshMods()
     {
@@ -929,7 +928,7 @@ public partial class MainWindow
                         File.Exists(Path.Combine(subDirs[0], $"{mod.Name}.dll")))
                     {
                         srcFolder = subDirs[0];
-                    }
+                      }
 
                     var destFolder = Path.Combine(_modsFolder, mod.Name);
                     if (Directory.Exists(destFolder))
@@ -1044,28 +1043,6 @@ public partial class MainWindow
         ServerStatusText.Foreground = System.Windows.Media.Brushes.Gray;
         // Check server status
         _ = CheckServerStatus();
-    }
-
-    private void ConfigureServerButton_Click(object sender, RoutedEventArgs e)
-    {
-        var serverConfigWindow = new ServerConfigWindow(_serverIp, _serverPort, _sptServerAddress, _secret!);
-        if (serverConfigWindow.ShowDialog() == true)
-        {
-            _serverIp = serverConfigWindow.ServerIp;
-            _serverPort = serverConfigWindow.ServerPort;
-            _sptServerAddress = serverConfigWindow.SptServerAddress;
-            _secret = serverConfigWindow.SecretKey;
-
-            // Validate secret on server
-            _secret = CheckIfSecretIsValid(_secret);
-
-            // Save updated config to exe folder
-            SaveConfig();
-
-            // Refresh mods and server status
-            _ = RefreshMods();
-            _ = CheckServerStatus();
-        }
     }
 
     // new: load config from file
@@ -1381,7 +1358,22 @@ public partial class MainWindow
     private Button RefreshModsButton => ModsTabContent.RefreshModsButtonRef;
     private Button CheckForModsButton => ModsTabContent.CheckForModsButtonRef;
 
-    private Button ConfigureServerButton => SettingsTabContent.ConfigureServerButtonRef;
+    // Expose server config getters/setters so SettingsTab can call them
+    public string GetServerIp() => _serverIp;
+    public void SetServerIp(string ip) => _serverIp = string.IsNullOrWhiteSpace(ip) ? "127.0.0.1" : ip;
+
+    public int GetServerPort() => _serverPort;
+    public void SetServerPort(int port) => _serverPort = port > 0 ? port : 25569;
+
+    public string GetSptServerAddress() => _sptServerAddress;
+    public void SetSptServerAddress(string addr) => _sptServerAddress = string.IsNullOrWhiteSpace(addr) ? "http://127.0.0.1:6969" : addr;
+
+    public string? GetSecret() => _secret;
+    public void SetSecret(string? secret) => _secret = string.IsNullOrWhiteSpace(secret) ? "" : secret;
+
+    // Public wrappers for config persistence and secret validation used by SettingsTab
+    public void SaveConfigPublic() => SaveConfig();
+    public string? ValidateSecretPublic(string? secret) => CheckIfSecretIsValid(secret);
 
 }
 
