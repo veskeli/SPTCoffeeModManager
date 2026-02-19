@@ -4,7 +4,6 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -312,7 +311,7 @@ public partial class MainWindow
 
                 if (response.IsSuccessStatusCode)
                 {
-                    string verText = "0.0.0.0";
+                    string verText;
                     try
                     {
                         var responseText = await response.Content.ReadAsStringAsync();
@@ -324,7 +323,7 @@ public partial class MainWindow
                         verText = "0.0.0.0";
                     }
 
-                    if (!Version.TryParse(verText, out Version? version))
+                    if (!Version.TryParse(verText, out var version))
                     {
                         version = new Version(0, 0, 0, 0);
                     }
@@ -411,7 +410,7 @@ public partial class MainWindow
 
                 // Response returns true and false based on SPT server status so we can use it to update that
                 var content = await response.Content.ReadAsStringAsync();
-                if (bool.TryParse(content.Trim(), out bool isServerRunning))
+                if (bool.TryParse(content.Trim(), out var isServerRunning))
                 {
                     SptServerStatusText.Text = isServerRunning ? "Online" : "Offline";
                     SptServerStatusText.Foreground = isServerRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
@@ -447,7 +446,7 @@ public partial class MainWindow
             if (responseHeadless.IsSuccessStatusCode)
             {
                 var content = await responseHeadless.Content.ReadAsStringAsync();
-                if (bool.TryParse(content.Trim(), out bool isHeadlessRunning))
+                if (bool.TryParse(content.Trim(), out var isHeadlessRunning))
                 {
                     HeadlessStatusText.Text = isHeadlessRunning ? "Online" : "Offline";
                     HeadlessStatusText.Foreground = isHeadlessRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
@@ -482,7 +481,7 @@ public partial class MainWindow
         var statusList = CompareMods(serverMods, localMods);
         ModListView.ItemsSource = statusList;
 
-        bool upToDate = ModsMatch(serverMods, localMods);
+        var upToDate = ModsMatch(serverMods, localMods);
         LaunchOrUpdateButton.Content = upToDate ? "Launch" : "Update";
         LaunchOrUpdateButton.IsEnabled = true;
     }
@@ -807,7 +806,7 @@ public partial class MainWindow
 
     private async Task<bool> DownloadAndUpdateMods(List<ModStatusEntry> mods)
     {
-        bool success = true;
+        var success = true;
         using var client = new HttpClient();
         client.Timeout = TimeSpan.FromMinutes(120); // 2 hours timeout for large mods
 
@@ -863,7 +862,7 @@ public partial class MainWindow
 
                         if (canReport)
                         {
-                            double percent = (double)totalRead / totalBytes * 100;
+                            var percent = (double)totalRead / totalBytes * 100;
                             if (percent - lastPercent >= 1) // only update every 1%
                             {
                                 mod.Status = $"Downloading... {percent:F0}%";
@@ -895,7 +894,7 @@ public partial class MainWindow
                 if (modInfo.IsFolderMod)
                 {
                     // Handle nested mod folders correctly
-                    string srcFolder = extractPath;
+                    var srcFolder = extractPath;
                     var subDirs = Directory.GetDirectories(extractPath);
 
                     if (subDirs.Length == 1 &&
@@ -1008,13 +1007,6 @@ public partial class MainWindow
         await Task.Delay(1000); // 1 second cooldown
         CheckUpdatesButton.Content = "Check for mod updates";
         CheckUpdatesButton.IsEnabled = true;
-    }
-
-    // Make the window draggable
-    private void Header_MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton == MouseButton.Left)
-            this.DragMove();
     }
 
     private void CheckServerButton_Click(object sender, RoutedEventArgs e)
@@ -1288,13 +1280,13 @@ public partial class MainWindow
         SettingsTabContent.Visibility = Visibility.Collapsed;
 
         // Update button styling
-        HomeTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 14, 99, 156));
+        HomeTabButton.Background = GetBrush("BrushAccent");
         HomeTabButton.FontWeight = FontWeights.Bold;
 
-        ModsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        ModsTabButton.Background = GetBrush("BrushSurface1");
         ModsTabButton.FontWeight = FontWeights.Normal;
 
-        SettingsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        SettingsTabButton.Background = GetBrush("BrushSurface1");
         SettingsTabButton.FontWeight = FontWeights.Normal;
     }
 
@@ -1309,13 +1301,13 @@ public partial class MainWindow
         SettingsTabContent.Visibility = Visibility.Collapsed;
 
         // Update button styling
-        HomeTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        HomeTabButton.Background = GetBrush("BrushSurface1");
         HomeTabButton.FontWeight = FontWeights.Normal;
 
-        ModsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 14, 99, 156));
+        ModsTabButton.Background = GetBrush("BrushAccent");
         ModsTabButton.FontWeight = FontWeights.Bold;
 
-        SettingsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        SettingsTabButton.Background = GetBrush("BrushSurface1");
         SettingsTabButton.FontWeight = FontWeights.Normal;
     }
 
@@ -1330,14 +1322,19 @@ public partial class MainWindow
         SettingsTabContent.Visibility = Visibility.Visible;
 
         // Update button styling
-        HomeTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        HomeTabButton.Background = GetBrush("BrushSurface1");
         HomeTabButton.FontWeight = FontWeights.Normal;
 
-        ModsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 37, 37, 38));
+        ModsTabButton.Background = GetBrush("BrushSurface1");
         ModsTabButton.FontWeight = FontWeights.Normal;
 
-        SettingsTabButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 14, 99, 156));
+        SettingsTabButton.Background = GetBrush("BrushAccent");
         SettingsTabButton.FontWeight = FontWeights.Bold;
+    }
+
+    private static System.Windows.Media.Brush GetBrush(string key)
+    {
+        return (System.Windows.Media.Brush)Application.Current.Resources[key];
     }
 }
 

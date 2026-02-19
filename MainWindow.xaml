@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="SPT Coffee Mod Manager" Height="550" Width="1000"
         ResizeMode="NoResize"
-        Background="#1e1e1e" Foreground="White"
+        Background="{DynamicResource BrushAppBackground}" Foreground="{DynamicResource BrushTextPrimary}"
         WindowStyle="None">
     <Grid Margin="0">
         <Grid.RowDefinitions>
@@ -26,20 +26,20 @@
             </Grid.ColumnDefinitions>
 
             <!-- Tab Buttons (Vertical) -->
-            <StackPanel Grid.Column="0" Orientation="Vertical" Background="#252526" Margin="0">
+            <StackPanel Grid.Column="0" Orientation="Vertical" Background="{DynamicResource BrushSurface1}" Margin="0">
                 <Button Name="HomeTabButton" Content="Home" Height="50" FontSize="13" FontWeight="Bold"
-                        Background="#0e639c" Foreground="White" BorderBrush="Transparent" BorderThickness="0"
+                        Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="Transparent" BorderThickness="0"
                         Click="HomeTab_Click" Cursor="Hand" />
                 <Button Name="ModsTabButton" Content="Mods" Height="50" FontSize="13" FontWeight="Normal"
-                        Background="#252526" Foreground="White" BorderBrush="Transparent" BorderThickness="0"
+                        Background="{DynamicResource BrushSurface1}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="Transparent" BorderThickness="0"
                         Click="ModsTab_Click" Cursor="Hand" />
                 <Button Name="SettingsTabButton" Content="Settings" Height="50" FontSize="13" FontWeight="Normal"
-                        Background="#252526" Foreground="White" BorderBrush="Transparent" BorderThickness="0"
+                        Background="{DynamicResource BrushSurface1}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="Transparent" BorderThickness="0"
                         Click="SettingsTab_Click" Cursor="Hand" />
             </StackPanel>
 
             <!-- Tab Content -->
-            <Grid Grid.Column="1" Background="#1e1e1e" Margin="5">
+            <Grid Grid.Column="1" Background="{DynamicResource BrushAppBackground}" Margin="5">
                 <!-- Home Tab -->
                 <StackPanel Name="HomeTabContent" Margin="5">
                     <Grid Margin="2,1,2,1" Height="30">
@@ -50,42 +50,42 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="Server: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="0,0,8,0" />
-                            <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
-                            <TextBlock Name="SptServerStatusTextLabel" Text="SPT Server: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="10,0,8,0" />
-                            <TextBlock Name="SptServerStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
-                            <TextBlock Name="HeadlessStatusTextLabel" Text="Headless: " FontWeight="Bold" Foreground="White" FontSize="13" Margin="10,0,8,0" />
-                            <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="Gray" FontSize="13" />
+                            <TextBlock Text="Server: " FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" Margin="0,0,8,0" />
+                            <TextBlock Name="ServerStatusText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="13" />
+                            <TextBlock Name="SptServerStatusTextLabel" Text="SPT Server: " FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" Margin="10,0,8,0" />
+                            <TextBlock Name="SptServerStatusText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="13" />
+                            <TextBlock Name="HeadlessStatusTextLabel" Text="Headless: " FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" Margin="10,0,8,0" />
+                            <TextBlock Name="HeadlessStatusText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="13" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
                             <Button Name="KillHeadlessButton" Content="K" Width="25" Margin="0,0,10,0"
-                                    Background="#ff6e6e" Foreground="White" BorderBrush="#3c3c3c" Click="KillServer_Click" Visibility="Collapsed"/>
+                                    Background="{DynamicResource BrushDanger}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Click="KillServer_Click" Visibility="Collapsed"/>
                             <Button Name="RefreshButton" Content="⟳" Width="25" Height="25" Margin="0,0,10,0"
-                                    Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="CheckServerButton_Click"/>
+                                    Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Click="CheckServerButton_Click"/>
                         </StackPanel>
                     </Grid>
 
                     <GroupBox Header="Quick Status" Margin="0,10,0,15"
-                              Background="#252526" Foreground="White" BorderBrush="#3c3c3c">
+                              Background="{DynamicResource BrushSurface1}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}">
                         <StackPanel Margin="10">
                             <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
-                                <TextBlock Text="Config sync status: " Foreground="White" FontSize="12" Margin="0,0,10,0" />
-                                <TextBlock Name="SyncStatusText" Text="Checking..." Foreground="Gray" FontSize="12" />
+                                <TextBlock Text="Config sync status: " Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,10,0" />
+                                <TextBlock Name="SyncStatusText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="12" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
-                                <TextBlock Text="Current SPT version: " Foreground="White" FontSize="12" Margin="0,0,10,0" />
-                                <TextBlock Name="CurrentSptVersionText" Text="Checking..." Foreground="Gray" FontSize="12" />
+                                <TextBlock Text="Current SPT version: " Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,10,0" />
+                                <TextBlock Name="CurrentSptVersionText" Text="Checking..." Foreground="{DynamicResource BrushTextMuted}" FontSize="12" />
                             </StackPanel>
-                            <TextBlock Name="StatusTextBlock" Text="" Margin="0,10,0,0" Foreground="White" FontSize="12"/>
+                            <TextBlock Name="StatusTextBlock" Text="" Margin="0,10,0,0" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12"/>
                         </StackPanel>
                     </GroupBox>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Height="40" Margin="0,10,0,0">
                         <Button Name="CheckUpdatesButton" Content="Check for mod updates" Width="170" Margin="0,0,10,0"
-                                Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="CheckUpdates_Click" />
+                                Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Click="CheckUpdates_Click" />
                         <Button Name="LaunchOrUpdateButton" Content="Play" Width="120"
-                                Background="#057328" Foreground="White" BorderBrush="#3c3c3c" Click="LaunchOrUpdate_Click" />
+                                Background="{DynamicResource BrushSuccess}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Click="LaunchOrUpdate_Click" />
                     </StackPanel>
                 </StackPanel>
 
@@ -96,45 +96,45 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Installed Mods" FontWeight="Bold" Foreground="White" FontSize="14" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="0" Text="Installed Mods" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="14" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Name="RefreshModsButton" Content="⟳ Refresh" Width="80" Height="25"
-                                Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="CheckServerButton_Click"/>
+                                Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Click="CheckServerButton_Click"/>
                     </Grid>
 
                     <GroupBox Header="Mod Status" Margin="0,0,0,5"
-                              Background="#252526" Foreground="White" BorderBrush="#3c3c3c">
-                        <ListView Name="ModListView" Height="380" Background="#1e1e1e" Foreground="White" BorderBrush="#3c3c3c" Margin="0,10,0,0">
+                              Background="{DynamicResource BrushSurface1}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}">
+                        <ListView Name="ModListView" Height="380" Background="{DynamicResource BrushAppBackground}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Margin="0,10,0,0">
                             <ListView.Resources>
                                 <Style TargetType="ListViewItem">
-                                    <Setter Property="Background" Value="#1e1e1e" />
+                                    <Setter Property="Background" Value="{DynamicResource BrushAppBackground}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Status}" Value="Up to date">
-                                            <Setter Property="Background" Value="#213d2f" />
+                                            <Setter Property="Background" Value="{DynamicResource BrushSuccess}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Status}" Value="Update">
-                                            <Setter Property="Background" Value="#3a3a1e" />
+                                            <Setter Property="Background" Value="{DynamicResource BrushWarning}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Status}" Value="Not installed">
-                                            <Setter Property="Background" Value="#3d2b2b" />
+                                            <Setter Property="Background" Value="{DynamicResource BrushDanger}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Status}" Value="Removed">
-                                            <Setter Property="Background" Value="#522900" />
+                                            <Setter Property="Background" Value="{DynamicResource BrushDangerAlt}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Status}" Value="Downloading...">
-                                            <Setter Property="Background" Value="#2b2b3d" />
+                                            <Setter Property="Background" Value="{DynamicResource BrushInfo}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Status}" Value="Extracting...">
-                                            <Setter Property="Background" Value="#2b3d2b" />
+                                            <Setter Property="Background" Value="{DynamicResource BrushSuccessAlt}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Status}" Value="Installing...">
-                                            <Setter Property="Background" Value="#3d2b3d" />
+                                            <Setter Property="Background" Value="{DynamicResource BrushInfoAlt}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                                 <Style TargetType="GridViewColumnHeader">
-                                    <Setter Property="Background" Value="#232323"/>
-                                    <Setter Property="Foreground" Value="White"/>
-                                    <Setter Property="BorderBrush" Value="#3c3c3c"/>
+                                    <Setter Property="Background" Value="{DynamicResource BrushSurface1}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
                                 </Style>
                             </ListView.Resources>
                             <ListView.View>
@@ -151,13 +151,13 @@
 
                 <!-- Settings Tab -->
                 <StackPanel Name="SettingsTabContent" Visibility="Collapsed" Margin="5">
-                    <TextBlock Text="Settings" FontWeight="Bold" Foreground="White" FontSize="14" Margin="0,0,0,15" />
+                    <TextBlock Text="Settings" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="14" Margin="0,0,0,15" />
                     <GroupBox Header="Server Configuration" Margin="0,0,0,10"
-                              Background="#252526" Foreground="White" BorderBrush="#3c3c3c">
+                              Background="{DynamicResource BrushSurface1}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}">
                         <StackPanel Margin="10">
                             <Button Name="ConfigureServerButton" Content="Configure Server" Width="150" Height="30" Margin="0,0,0,10"
-                                    Background="#0e639c" Foreground="White" BorderBrush="#3c3c3c" Click="ConfigureServerButton_Click"/>
-                            <TextBlock Text="Manage server connection settings and authentication" Foreground="Gray" FontSize="11" TextWrapping="Wrap" />
+                                    Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Click="ConfigureServerButton_Click"/>
+                            <TextBlock Text="Manage server connection settings and authentication" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" TextWrapping="Wrap" />
                         </StackPanel>
                     </GroupBox>
                 </StackPanel>
