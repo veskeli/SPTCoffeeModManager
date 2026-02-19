@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 
 namespace SPTCoffeeModManager;
 
@@ -13,6 +14,13 @@ public partial class ServerConfigWindow : Window
     public ServerConfigWindow(string serverIp = "", int serverPort = 0, string sptServerAddressTextBox = "", string secret = "")
     {
         InitializeComponent();
+
+        // Apply Windows 11 rounded corners if available
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            _ = WindowCornerHelper.TrySetWindowCornerPreference(hwnd, WindowCornerHelper.DwmWindowCorner.Round);
+        };
 
         // Initialize properties with defaults when incoming values are empty/invalid
         ServerIp = string.IsNullOrWhiteSpace(serverIp) ? "127.0.0.1" : serverIp;

@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.SignalR.Client;
+using System.Windows.Interop;
 
 namespace SPTCoffeeModManager;
 
@@ -69,6 +70,14 @@ public partial class MainWindow
         }
 
         InitializeComponent();
+
+        // Apply Windows 11 rounded corners if available
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            // Prefer small rounding for subtle look
+            _ = WindowCornerHelper.TrySetWindowCornerPreference(hwnd, WindowCornerHelper.DwmWindowCorner.Round);
+        };
 
         // Wire up event handlers
         if (HomeTabContent != null)

@@ -2,6 +2,7 @@
 using System.IO.Compression;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Interop;
 
 namespace SPTCoffeeModManager;
 
@@ -12,6 +13,13 @@ public partial class SPTUpdater : Window
     public SPTUpdater(string baseUrl, string basePath)
     {
         InitializeComponent();
+
+        // Apply Windows 11 rounded corners if available
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            _ = WindowCornerHelper.TrySetWindowCornerPreference(hwnd, WindowCornerHelper.DwmWindowCorner.Round);
+        };
 
         Loaded += async (_, _) =>
         {
