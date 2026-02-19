@@ -27,15 +27,87 @@
 
             <!-- Tab Buttons (Vertical) -->
             <StackPanel Grid.Column="0" Orientation="Vertical" Background="{DynamicResource BrushSurface1}" Margin="0">
-                <Button Name="HomeTabButton" Content="Home" Height="50" FontSize="13" FontWeight="Bold"
-                        Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="Transparent" BorderThickness="0"
-                        Click="HomeTab_Click" Cursor="Hand" />
-                <Button Name="ModsTabButton" Content="Mods" Height="50" FontSize="13" FontWeight="Normal"
-                        Background="{DynamicResource BrushSurface1}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="Transparent" BorderThickness="0"
-                        Click="ModsTab_Click" Cursor="Hand" />
-                <Button Name="SettingsTabButton" Content="Settings" Height="50" FontSize="13" FontWeight="Normal"
-                        Background="{DynamicResource BrushSurface1}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="Transparent" BorderThickness="0"
-                        Click="SettingsTab_Click" Cursor="Hand" />
+
+                <!-- Coffee Cup Icon -->
+
+                <Image Source="{StaticResource IconCoffeeCup}"
+                       Width="40"
+                       Height="40"
+                       Margin="10"
+                       HorizontalAlignment="Center"/>
+
+                <Button Name="HomeTabButton"
+                        Height="40"
+                        Background="{DynamicResource BrushAccent}"
+                        BorderThickness="0"
+                        Click="HomeTab_Click"
+                        Cursor="Hand">
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                        <!-- HOME ICON -->
+                        <Path Data="{StaticResource IconHome}"
+                              Fill="{DynamicResource BrushTextPrimary}"
+                              Stretch="Uniform"
+                              Width="18"
+                              Height="18"/>
+
+                        <!-- HOME TEXT -->
+                        <TextBlock Text="Home"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   Foreground="{DynamicResource BrushTextPrimary}" />
+
+                    </StackPanel>
+                </Button>
+                <Button Name="ModsTabButton"
+                        Height="40"
+                        Background="{DynamicResource BrushSurface1}"
+                        BorderThickness="0"
+                        Click="ModsTab_Click"
+                        Cursor="Hand">
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                        <!-- MODS ICON -->
+                        <Image Source="{StaticResource IconMods}"
+                               Width="18"
+                               Height="18"/>
+
+                        <!-- MODS TEXT -->
+                        <TextBlock Text="Mods"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   Foreground="{DynamicResource BrushTextPrimary}" />
+
+                    </StackPanel>
+                </Button>
+                <Button Name="SettingsTabButton"
+                        Height="40"
+                        Background="{DynamicResource BrushSurface1}"
+                        BorderThickness="0"
+                        Click="SettingsTab_Click" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                        <!-- SETTINGS ICON -->
+                        <Image Source="{StaticResource IconSettings}"
+                               Width="18"
+                               Height="18"/>
+
+                        <!-- SETTINGS TEXT -->
+                        <TextBlock Text="Settings"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   Foreground="{DynamicResource BrushTextPrimary}" />
+
+                    </StackPanel>
+                </Button>
             </StackPanel>
 
             <!-- Tab Content -->
