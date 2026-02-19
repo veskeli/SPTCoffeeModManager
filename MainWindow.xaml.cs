@@ -30,7 +30,7 @@ public partial class MainWindow
     // store exe directory and config path
     private readonly string? _configPath;
 
-    private HubConnection? _hubConnection;
+    // SignalR connection is now managed by Services.SignalRService
 
     // Excluded mod names and folders (fetched from server as well)
     private List<string> _excludedMods = new List<string>
@@ -133,103 +133,47 @@ public partial class MainWindow
 
     private async Task InitializeSignalR()
     {
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl($"{BaseUrl}/hub")
-            .WithAutomaticReconnect()
-            .Build();
+        // Subscribe to the shared SignalR service events and start the connection.
+        var svc = SPTCoffeeModManager.Services.SignalRService.Instance;
 
-        // On various server notifications
-        _hubConnection.On<string>("ServerRestarting", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[SERVER NOTICE] " + message);
-                ServerStatusText.Text = "Restarting...";
-                ServerStatusText.Foreground = System.Windows.Media.Brushes.Orange;
-            });
-        });
+        // Unsubscribe first to avoid duplicate handlers if called multiple times
+        svc.ServerRestarting -= OnServerRestarting;
+        svc.SptServerOffline -= OnSptServerOffline;
+        svc.SptServerOnline -= OnSptServerOnline;
+        svc.SptServerRestarting -= OnSptServerRestarting;
+        svc.SptServerUpdating -= OnSptServerUpdating;
+        svc.HeadlessOffline -= OnHeadlessOffline;
+        svc.HeadlessOnline -= OnHeadlessOnline;
+        svc.HeadlessRestarted -= OnHeadlessRestarted;
+        svc.Connected -= OnConnected;
+        svc.ConnectionFailed -= OnConnectionFailed;
 
-        _hubConnection.On<string>("SptServerOffline", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[SPT NOTICE] " + message);
-                SptServerStatusText.Text = "Offline";
-                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
-            });
-        });
+        svc.ServerRestarting += OnServerRestarting;
+        svc.SptServerOffline += OnSptServerOffline;
+        svc.SptServerOnline += OnSptServerOnline;
+        svc.SptServerRestarting += OnSptServerRestarting;
+        svc.SptServerUpdating += OnSptServerUpdating;
+        svc.HeadlessOffline += OnHeadlessOffline;
+        svc.HeadlessOnline += OnHeadlessOnline;
+        svc.HeadlessRestarted += OnHeadlessRestarted;
+        svc.Connected += OnConnected;
+        svc.ConnectionFailed += OnConnectionFailed;
 
-        _hubConnection.On<string>("SptServerOnline", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[SPT NOTICE] " + message);
-                SptServerStatusText.Text = "Online";
-                SptServerStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
-            });
-        });
-
-        _hubConnection.On<string>("SptServerRestarting", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[SPT NOTICE] " + message);
-                SptServerStatusText.Text = "Restarting...";
-                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Orange;
-            });
-        });
-
-        _hubConnection.On<string>("SptServerUpdating", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[SPT NOTICE] " + message);
-                SptServerStatusText.Text = "Updating...";
-                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Aqua;
-            });
-        });
-
-        _hubConnection.On<string>("HeadlessOffline", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[HEADLESS NOTICE] " + message);
-                HeadlessStatusText.Text = "Offline";
-                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Red;
-            });
-        });
-
-        _hubConnection.On<string>("HeadlessOnline", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[HEADLESS NOTICE] " + message);
-                HeadlessStatusText.Text = "Online";
-                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
-            });
-        });
-
-        // On headless restarted
-        _hubConnection.On<string>("HeadlessRestarted", (message) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                Console.WriteLine("[SERVER NOTICE] " + message);
-                HeadlessStatusText.Text = "Restarting...";
-                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Orange;
-            });
-        });
-
-        try
-        {
-            await _hubConnection.StartAsync();
-            Dispatcher.Invoke(() => Console.WriteLine("Connected to server notifications"));
-        }
-        catch (Exception ex)
-        {
-            Dispatcher.Invoke(() => MessageBox.Show("SignalR connection failed:\n" + ex.Message));
-        }
+        // Start the shared connection
+        await svc.StartAsync(BaseUrl);
     }
+
+    // Event bridges that marshal into the UI thread
+    private void OnServerRestarting(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[SERVER NOTICE] " + message); HomeTabContent.SetServerStatus("Restarting...", System.Windows.Media.Brushes.Orange); });
+    private void OnSptServerOffline(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[SPT NOTICE] " + message); HomeTabContent.SetSptServerStatus("Offline", System.Windows.Media.Brushes.Red); });
+    private void OnSptServerOnline(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[SPT NOTICE] " + message); HomeTabContent.SetSptServerStatus("Online", System.Windows.Media.Brushes.LightGreen); });
+    private void OnSptServerRestarting(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[SPT NOTICE] " + message); HomeTabContent.SetSptServerStatus("Restarting...", System.Windows.Media.Brushes.Orange); });
+    private void OnSptServerUpdating(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[SPT NOTICE] " + message); HomeTabContent.SetSptServerStatus("Updating...", System.Windows.Media.Brushes.Aqua); });
+    private void OnHeadlessOffline(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[HEADLESS NOTICE] " + message); HomeTabContent.SetHeadlessStatus("Offline", System.Windows.Media.Brushes.Red); });
+    private void OnHeadlessOnline(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[HEADLESS NOTICE] " + message); HomeTabContent.SetHeadlessStatus("Online", System.Windows.Media.Brushes.LightGreen); });
+    private void OnHeadlessRestarted(string message) => Dispatcher.Invoke(() => { Console.WriteLine("[SERVER NOTICE] " + message); HomeTabContent.SetHeadlessStatus("Restarting...", System.Windows.Media.Brushes.Orange); });
+    private void OnConnected(string msg) => Dispatcher.Invoke(() => Console.WriteLine(msg));
+    private void OnConnectionFailed(Exception ex) => Dispatcher.Invoke(() => MessageBox.Show($"SignalR connection failed:\n{ex.Message}"));
 
     private string BaseUrl => $"http://{_serverIp}:{_serverPort}";
 
@@ -328,8 +272,7 @@ public partial class MainWindow
                 if (File.Exists(sptCoreDll))
                 {
                     var versionInfo = FileVersionInfo.GetVersionInfo(sptCoreDll);
-                    CurrentSptVersionText.Text = $"{versionInfo.FileVersion}";
-                    CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.Aqua;
+                    HomeTabContent.SetCurrentSptVersion($"{versionInfo.FileVersion}", System.Windows.Media.Brushes.Aqua);
                     bNotSuccessful = false;
                 }
 
@@ -353,14 +296,13 @@ public partial class MainWindow
                     }
 
                     // Check if the server is newer than local
-                    var localSptVersion = new Version(CurrentSptVersionText.Text);
+                    var localSptVersion = new Version(HomeTabContent.CurrentSptVersionTextBlock.Text);
                     if (version > localSptVersion)
                     {
-                        CurrentSptVersionText.Text = $"{localSptVersion} (Outdated)";
-                        CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.Red;
+                        HomeTabContent.SetCurrentSptVersion($"{localSptVersion} (Outdated)", System.Windows.Media.Brushes.Red);
 
                         // Set play button to update
-                        LaunchOrUpdateButton.Content = "Update SPT";
+                        HomeTabContent.SetLaunchOrUpdateButtonContent("Update SPT");
                         var updateSpt = MessageBox.Show("A new SPT version is required. Would you like to update?", "Update Required", MessageBoxButton.YesNo, MessageBoxImage.Question);
                         if (updateSpt == MessageBoxResult.Yes)
                         {
@@ -369,7 +311,8 @@ public partial class MainWindow
                     }
                     else
                     {
-                        CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.LightGreen;
+                        // use the current text already set on the HomeTab
+                        HomeTabContent.SetCurrentSptVersion(HomeTabContent.CurrentSptVersionTextBlock.Text, System.Windows.Media.Brushes.LightGreen);
                     }
 
                     bNotSuccessful = false;
@@ -377,8 +320,7 @@ public partial class MainWindow
 
                 if(bNotSuccessful)
                 {
-                    CurrentSptVersionText.Text = "Unknown";
-                    CurrentSptVersionText.Foreground = System.Windows.Media.Brushes.Red;
+                    HomeTabContent.SetCurrentSptVersion("Unknown", System.Windows.Media.Brushes.Red);
                 }
             }
         }
@@ -391,7 +333,7 @@ public partial class MainWindow
     private void SptNeedsUpdate()
     {
         // Set play button to update
-        LaunchOrUpdateButton.Content = "Update SPT";
+        HomeTabContent.SetLaunchOrUpdateButtonContent("Update SPT");
 
         // Don't open multiple updater windows
         foreach (Window w in Application.Current.Windows)
@@ -429,23 +371,19 @@ public partial class MainWindow
             // If response is successful, server is online
             if (response.IsSuccessStatusCode)
             {
-                ServerStatusText.Text = "Online";
-                ServerStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+                HomeTabContent.SetServerStatus("Online", System.Windows.Media.Brushes.LightGreen);
 
                 // Response returns true and false based on SPT server status so we can use it to update that
                 var content = await response.Content.ReadAsStringAsync();
                 if (bool.TryParse(content.Trim(), out var isServerRunning))
                 {
-                    SptServerStatusText.Text = isServerRunning ? "Online" : "Offline";
-                    SptServerStatusText.Foreground = isServerRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
+                    HomeTabContent.SetSptServerStatus(isServerRunning ? "Online" : "Offline", isServerRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red);
                 }
             }
             else
             {
-                ServerStatusText.Text = "Offline";
-                ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
-                SptServerStatusText.Text = "Offline";
-                SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+                HomeTabContent.SetServerStatus("Offline", System.Windows.Media.Brushes.Red);
+                HomeTabContent.SetSptServerStatus("Offline", System.Windows.Media.Brushes.Red);
             }
 
             // Headless server status
@@ -453,10 +391,8 @@ public partial class MainWindow
         }
         catch
         {
-            ServerStatusText.Text = "Offline";
-            ServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
-            SptServerStatusText.Text = "Offline";
-            SptServerStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            HomeTabContent.SetServerStatus("Offline", System.Windows.Media.Brushes.Red);
+            HomeTabContent.SetSptServerStatus("Offline", System.Windows.Media.Brushes.Red);
         }
     }
 
@@ -471,21 +407,18 @@ public partial class MainWindow
                 var content = await responseHeadless.Content.ReadAsStringAsync();
                 if (bool.TryParse(content.Trim(), out var isHeadlessRunning))
                 {
-                    HeadlessStatusText.Text = isHeadlessRunning ? "Online" : "Offline";
-                    HeadlessStatusText.Foreground = isHeadlessRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red;
+                    HomeTabContent.SetHeadlessStatus(isHeadlessRunning ? "Online" : "Offline", isHeadlessRunning ? System.Windows.Media.Brushes.LightGreen : System.Windows.Media.Brushes.Red);
                 }
             }
             else
             {
-                HeadlessStatusText.Text = "Offline";
-                HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Red;
+                HomeTabContent.SetHeadlessStatus("Offline", System.Windows.Media.Brushes.Red);
             }
         }
         catch (Exception e)
         {
             Debug.WriteLine($"Error checking headless server status: {e.Message}");
-            HeadlessStatusText.Text = "Offline";
-            HeadlessStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            HomeTabContent.SetHeadlessStatus("Offline", System.Windows.Media.Brushes.Red);
         }
     }
 
@@ -495,7 +428,7 @@ public partial class MainWindow
 
     private async Task RefreshMods()
     {
-        LaunchOrUpdateButton.IsEnabled = false;
+        HomeTabContent.SetLaunchOrUpdateButtonEnabled(false);
 
         var serverMods = await GetServerModsAsync();
         var localMods = GetLocalMods();
@@ -506,11 +439,11 @@ public partial class MainWindow
         }
 
         var statusList = CompareMods(serverMods, localMods);
-        ModListView.ItemsSource = statusList;
+        HomeTabContent.SetModListItemsSource(statusList);
 
         var upToDate = ModsMatch(serverMods, localMods);
-        LaunchOrUpdateButton.Content = upToDate ? "Launch" : "Update";
-        LaunchOrUpdateButton.IsEnabled = true;
+        HomeTabContent.SetLaunchOrUpdateButtonContent(upToDate ? "Launch" : "Update");
+        HomeTabContent.SetLaunchOrUpdateButtonEnabled(true);
     }
 
     private List<ModStatusEntry> CompareMods(List<ModEntry> serverMods, List<ModEntry> localMods)
@@ -622,36 +555,31 @@ public partial class MainWindow
 
     private async Task RefreshPluginConfigs()
     {
-        SyncStatusText.Text = "Checking...";
-        SyncStatusText.Foreground = System.Windows.Media.Brushes.Gray;
+        HomeTabContent.SetSyncStatus("Checking...", System.Windows.Media.Brushes.Gray);
 
         var serverConfigs = await GetServerConfigsAsync();
         var localConfigs = GetLocalConfigs();
 
         if(serverConfigs.Count == 0)
         {
-            SyncStatusText.Text = "Failed to get server configs";
-            SyncStatusText.Foreground = System.Windows.Media.Brushes.DarkOrange;
+            HomeTabContent.SetSyncStatus("Failed to get server configs", System.Windows.Media.Brushes.DarkOrange);
             return;
         }
         if(localConfigs.Count == 0)
         {
-            SyncStatusText.Text = "No local configs";
-            SyncStatusText.Foreground = System.Windows.Media.Brushes.MediumSlateBlue;
+            HomeTabContent.SetSyncStatus("No local configs", System.Windows.Media.Brushes.MediumSlateBlue);
             return;
         }
 
         if(serverConfigs.Count != localConfigs.Count)
         {
-            SyncStatusText.Text = "Configs out of sync";
-            SyncStatusText.Foreground = System.Windows.Media.Brushes.CadetBlue;
+            HomeTabContent.SetSyncStatus("Configs out of sync", System.Windows.Media.Brushes.CadetBlue);
             return;
         }
 
         // TODO: Check enforced configs last modified dates
 
-        SyncStatusText.Text = "Configs synced";
-        SyncStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+        HomeTabContent.SetSyncStatus("Configs synced", System.Windows.Media.Brushes.LightGreen);
     }
 
     private async void LaunchOrUpdate_Click(object sender, RoutedEventArgs e)
@@ -659,18 +587,17 @@ public partial class MainWindow
         try
         {
             // If SPT needs update, open updater window
-            if (LaunchOrUpdateButton.Content.ToString() == "Update SPT")
+            if (HomeTabContent.GetLaunchOrUpdateButtonContent() == "Update SPT")
             {
                 SptNeedsUpdate();
                 return;
             }
 
             // Sync configs
-            StatusTextBlock.Text = "Syncing config files...";
-            var serverConfigs = await GetServerConfigsAsync();
-            var localConfigs = GetLocalConfigs();
-            SyncStatusText.Text = "Syncing configs...";
-            SyncStatusText.Foreground = System.Windows.Media.Brushes.DodgerBlue;
+            HomeTabContent.SetStatusMessage("Syncing config files...");
+             var serverConfigs = await GetServerConfigsAsync();
+             var localConfigs = GetLocalConfigs();
+            HomeTabContent.SetSyncStatus("Syncing configs...", System.Windows.Media.Brushes.DodgerBlue);
 
             // Check if configs length differ (some local configs removed or this is first launch) sync all missing configs
             if (localConfigs.Count != serverConfigs.Count)
@@ -750,45 +677,44 @@ public partial class MainWindow
                     }
                 }
             }
-            SyncStatusText.Text = "Configs synced";
-            SyncStatusText.Foreground = System.Windows.Media.Brushes.LightGreen;
+            HomeTabContent.SetSyncStatus("Configs synced", System.Windows.Media.Brushes.LightGreen);
 
-            if (LaunchOrUpdateButton.Content.ToString() == "Update")
+            if (HomeTabContent.GetLaunchOrUpdateButtonContent() == "Update")
             {
-                LaunchOrUpdateButton.IsEnabled = false;
-                StatusTextBlock.Text = "Updating mods...";
-                var modsToUpdate = ((List<ModStatusEntry>)ModListView.ItemsSource)
+                HomeTabContent.SetLaunchOrUpdateButtonEnabled(false);
+                HomeTabContent.SetStatusMessage("Updating mods...");
+                var modsToUpdate = ((List<ModStatusEntry>)HomeTabContent.GetModListItemsSource()!)
                     .Where(m => m.Status == "Update" || m.Status == "Not installed")
                     .ToList();
 
                 // Download and update mods
                 var allUpdated = await DownloadAndUpdateMods(modsToUpdate);
-                StatusTextBlock.Text = allUpdated ? "All mods updated" : "Some mods failed";
+                HomeTabContent.SetStatusMessage(allUpdated ? "All mods updated" : "Some mods failed");
 
                 // Remove mods marked as "Removed"
-                var modsToRemove = ((List<ModStatusEntry>)ModListView.ItemsSource)
-                    .Where(m => m.Status == "Removed")
-                    .ToList();
-                await RemoveMods(modsToRemove);
+                var modsToRemove = ((List<ModStatusEntry>)HomeTabContent.GetModListItemsSource()!)
+                     .Where(m => m.Status == "Removed")
+                     .ToList();
+                 await RemoveMods(modsToRemove);
 
                 // Small delay before finishing to let user see status and windows catch up
                 await Task.Delay(100);
-                StatusTextBlock.Text = "Update complete.";
+                HomeTabContent.SetStatusMessage("Update complete.");
                 await Task.Delay(200);
 
-                LaunchOrUpdateButton.Content = "Launch";
-                LaunchOrUpdateButton.IsEnabled = true;
+                HomeTabContent.SetLaunchOrUpdateButtonContent("Launch");
+                HomeTabContent.SetLaunchOrUpdateButtonEnabled(true);
 
                 await RefreshMods();
             }
             else
             {
-                StatusTextBlock.Text = "Launching the game...";
+                HomeTabContent.SetStatusMessage("Launching the game...");
                 LaunchTheGame();
             }
 
             await Task.Delay(2500);
-            StatusTextBlock.Text = "";
+            HomeTabContent.SetStatusMessage("");
         }
         catch (Exception ex)
         {
@@ -802,7 +728,7 @@ public partial class MainWindow
         try
         {
             // Show progress: removing mods
-            StatusTextBlock.Text = "Removing old mods...";
+            HomeTabContent.SetStatusMessage("Removing old mods...");
             await Task.Run(() =>
             {
                 foreach (var mod in modsToRemove)
@@ -822,7 +748,7 @@ public partial class MainWindow
                 }
             });
             // Update mod list UI
-            ModListView.Items.Refresh();
+            HomeTabContent.RefreshModList();
         }
         catch (Exception ex)
         {
@@ -846,8 +772,8 @@ public partial class MainWindow
 
                 // Initial UI update
                 mod.Status = "Preparing...";
-                ModListView.Items.Refresh();
-                StatusTextBlock.Text = $"Updating mod: {mod.Name}";
+                HomeTabContent.RefreshModList();
+                HomeTabContent.SetStatusMessage($"Updating mod: {mod.Name}");
                 await Task.Delay(50);
 
                 // Get mod info from server
@@ -893,8 +819,8 @@ public partial class MainWindow
                             if (percent - lastPercent >= 1) // only update every 1%
                             {
                                 mod.Status = $"Downloading... {percent:F0}%";
-                                StatusTextBlock.Text = $"Updating mod: {mod.Name} - {percent:F0}%";
-                                ModListView.Items.Refresh();
+                                HomeTabContent.SetStatusMessage($"Updating mod: {mod.Name} - {percent:F0}%");
+                                HomeTabContent.RefreshModList();
                                 lastPercent = percent;
                             }
                         }
@@ -903,8 +829,8 @@ public partial class MainWindow
 
                 // --- Extracting ---
                 mod.Status = "Extracting...";
-                ModListView.Items.Refresh();
-                StatusTextBlock.Text = $"Updating mod: {mod.Name}";
+                HomeTabContent.RefreshModList();
+                HomeTabContent.SetStatusMessage($"Updating mod: {mod.Name}");
                 await Task.Delay(50);
 
                 // Extract to temp folder
@@ -935,7 +861,7 @@ public partial class MainWindow
                         Directory.Delete(destFolder, true);
 
                     mod.Status = "Installing...";
-                    ModListView.Items.Refresh();
+                    HomeTabContent.RefreshModList();
                     await Task.Delay(50);
 
                     CopyDirectory(srcFolder, destFolder);
@@ -946,7 +872,7 @@ public partial class MainWindow
                     if (dllFile != null)
                     {
                         mod.Status = "Installing...";
-                        ModListView.Items.Refresh();
+                        HomeTabContent.RefreshModList();
                         await Task.Delay(50);
 
                         var destFile = Path.Combine(_modsFolder, Path.GetFileName(dllFile));
@@ -962,7 +888,7 @@ public partial class MainWindow
 
                 // Done
                 mod.Status = "Up to date";
-                ModListView.Items.Refresh();
+                HomeTabContent.RefreshModList();
                 await Task.Delay(50);
             }
             catch (Exception ex)
@@ -971,15 +897,15 @@ public partial class MainWindow
                 success = false;
 
                 mod.Status = "Failed";
-                ModListView.Items.Refresh();
-                StatusTextBlock.Text = $"Failed to update mod: {mod.Name}";
+                HomeTabContent.RefreshModList();
+                HomeTabContent.SetStatusMessage($"Failed to update mod: {mod.Name}");
 
                 MessageBox.Show($"Failed to update mod {mod.Name}: {ex.Message}",
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        StatusTextBlock.Text = "Mod updates complete.";
+        HomeTabContent.SetStatusMessage("Mod updates complete.");
         return success;
     }
 
@@ -1021,8 +947,8 @@ public partial class MainWindow
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
-        CheckUpdatesButton.IsEnabled = false;
-        CheckUpdatesButton.Content = "Checking...";
+        HomeTabContent.CheckUpdatesButtonRef.IsEnabled = false;
+        HomeTabContent.CheckUpdatesButtonRef.Content = "Checking...";
         try
         {
             await RefreshMods();
@@ -1032,17 +958,16 @@ public partial class MainWindow
             Debug.WriteLine($"Error checking for updates: {ex.Message}");
         }
         await Task.Delay(1000); // 1 second cooldown
-        CheckUpdatesButton.Content = "Check for mod updates";
-        CheckUpdatesButton.IsEnabled = true;
+        HomeTabContent.CheckUpdatesButtonRef.Content = "Check for mod updates";
+        HomeTabContent.CheckUpdatesButtonRef.IsEnabled = true;
     }
 
     private void CheckServerButton_Click(object sender, RoutedEventArgs e)
     {
-        // Set status to checking
-        ServerStatusText.Text = "Checking...";
-        ServerStatusText.Foreground = System.Windows.Media.Brushes.Gray;
-        // Check server status
-        _ = CheckServerStatus();
+         // Set status to checking
+        HomeTabContent.SetServerStatus("Checking...", System.Windows.Media.Brushes.Gray);
+         // Check server status
+         _ = CheckServerStatus();
     }
 
     // new: load config from file
@@ -1163,19 +1088,11 @@ public partial class MainWindow
         try
         {
             // Show admin panel and text if enabled, hide if not
-            HomeTabContent.AdminPanelRef.Visibility = config.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
-            HomeTabContent.AdminPanelText.Visibility = config.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
-
-            // The Kill Headless button is only visible if this admin allows headless close
-            HomeTabContent.KillHeadlessButtonRef.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
-
-            // Keep the old shortcut property consistent as well
-            KillHeadlessButton.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
+            HomeTabContent.UpdateAdminStatus(config);
         }
         catch
         {
             // Fallback: if referencing the panel fails for any reason, set the button only
-            KillHeadlessButton.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -1188,7 +1105,7 @@ public partial class MainWindow
             return;
         }
         // Check if the server is online
-        if (ServerStatusText.Text != "Online")
+        if (!HomeTabContent.IsServerOnline())
         {
             MessageBox.Show("Server is not online. Cannot send shutdown command.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -1359,20 +1276,8 @@ public partial class MainWindow
     }
 
     // Helper properties to access tab controls
-    private TextBlock ServerStatusText => HomeTabContent.ServerStatusTextBlock;
-    private TextBlock SptServerStatusText => HomeTabContent.SptServerStatusTextBlock;
-    private TextBlock HeadlessStatusText => HomeTabContent.HeadlessStatusTextBlock;
-    private TextBlock SyncStatusText => HomeTabContent.SyncStatusTextBlock;
-    private TextBlock CurrentSptVersionText => HomeTabContent.CurrentSptVersionTextBlock;
-    private TextBlock StatusTextBlock => HomeTabContent.StatusMessageTextBlock;
-    private Button KillHeadlessButton => HomeTabContent.KillHeadlessButtonRef;
-    private Button RefreshButton => HomeTabContent.RefreshButtonRef;
-    private Button CheckUpdatesButton => HomeTabContent.CheckUpdatesButtonRef;
-    private Button LaunchOrUpdateButton => HomeTabContent.LaunchOrUpdateButtonRef;
-
-    private ListView ModListView => HomeTabContent.ModListView;
-    private Button RefreshModsButton => ModsTabContent.RefreshModsButtonRef;
-    private Button CheckForModsButton => ModsTabContent.CheckForModsButtonRef;
+     private Button RefreshModsButton => ModsTabContent.RefreshModsButtonRef;
+     private Button CheckForModsButton => ModsTabContent.CheckForModsButtonRef;
 
     // Expose server config getters/setters so SettingsTab can call them
     public string GetServerIp() => _serverIp;
