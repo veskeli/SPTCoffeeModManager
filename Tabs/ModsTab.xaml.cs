@@ -13,9 +13,6 @@ public partial class ModsTab : UserControl
     }
 
     // Expose controls to parent window for easy access
-    public ListView ModListViewRef => ModListView;
     public Button RefreshModsButtonRef => RefreshModsButton;
     public Button CheckForModsButtonRef => CheckForModsButton;
 }
-
-

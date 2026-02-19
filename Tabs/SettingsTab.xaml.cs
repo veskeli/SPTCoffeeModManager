@@ -54,4 +54,16 @@ public partial class SettingsTab : UserControl
             MessageBox.Show("Server configuration saved.", "Saved", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
+
+    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Revert fields to current main window values
+        if (Application.Current.MainWindow is MainWindow main)
+        {
+            AddressTextBox.Text = main.GetServerIp();
+            PortTextBox.Text = main.GetServerPort().ToString();
+            SptServerAddressTextBox.Text = main.GetSptServerAddress();
+            SecretKeyTextBox.Password = main.GetSecret() ?? string.Empty;
+        }
+    }
 }

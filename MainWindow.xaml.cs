@@ -1354,7 +1354,7 @@ public partial class MainWindow
     private Button CheckUpdatesButton => HomeTabContent.CheckUpdatesButtonRef;
     private Button LaunchOrUpdateButton => HomeTabContent.LaunchOrUpdateButtonRef;
 
-    private ListView ModListView => ModsTabContent.ModListViewRef;
+    private ListView ModListView => HomeTabContent.ModListView;
     private Button RefreshModsButton => ModsTabContent.RefreshModsButtonRef;
     private Button CheckForModsButton => ModsTabContent.CheckForModsButtonRef;
 

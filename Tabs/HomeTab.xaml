@@ -10,8 +10,8 @@
     <Grid Margin="5">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -30,6 +30,61 @@
                 <Button Name="CheckUpdatesButton" Content="Check for mod updates" Width="170" Margin="0,0,10,0"
                         Background="{DynamicResource SecondaryBrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" />
             </StackPanel>
+        </Grid>
+
+        <!-- Mod Status in a rounded container -->
+        <Grid Grid.Row="1" Margin="0,6,0,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="Mod Status" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,0,6" />
+            <Border Grid.Row="1" Background="{DynamicResource BrushSurface1}" HorizontalAlignment="Left" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="8">
+                <ListView Name="ModListView" Background="{DynamicResource BrushAppBackground}" HorizontalAlignment="Left" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}">
+                    <ListView.Resources>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Background" Value="{DynamicResource BrushAppBackground}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Status}" Value="Up to date">
+                                    <Setter Property="Background" Value="{DynamicResource BrushAccentAlt}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Update">
+                                    <Setter Property="Background" Value="{DynamicResource BrushWarning}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Not installed">
+                                    <Setter Property="Background" Value="{DynamicResource BrushDanger}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Removed">
+                                    <Setter Property="Background" Value="{DynamicResource BrushDangerAlt}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Downloading...">
+                                    <Setter Property="Background" Value="{DynamicResource BrushInfo}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Extracting...">
+                                    <Setter Property="Background" Value="{DynamicResource BrushInfoAlt}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="Installing...">
+                                    <Setter Property="Background" Value="{DynamicResource BrushInfo}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                        <Style TargetType="GridViewColumnHeader">
+                            <Setter Property="Background" Value="{DynamicResource BrushSurface1}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+                        </Style>
+                    </ListView.Resources>
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Mod Name" Width="280" DisplayMemberBinding="{Binding Name}" />
+                            <GridViewColumn Header="Local Version" Width="100" DisplayMemberBinding="{Binding LocalVersion}" />
+                            <GridViewColumn Header="Server Version" Width="100" DisplayMemberBinding="{Binding ServerVersion}" />
+                            <GridViewColumn Header="Status" Width="90" DisplayMemberBinding="{Binding Status}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Border>
         </Grid>
 
         <!-- Middle content placeholder -->
