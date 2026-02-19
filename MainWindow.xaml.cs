@@ -928,7 +928,7 @@ public partial class MainWindow
                         File.Exists(Path.Combine(subDirs[0], $"{mod.Name}.dll")))
                     {
                         srcFolder = subDirs[0];
-                      }
+                    }
 
                     var destFolder = Path.Combine(_modsFolder, mod.Name);
                     if (Directory.Exists(destFolder))
@@ -1159,8 +1159,24 @@ public partial class MainWindow
 
     private void UpdateAdminStatus(AdminConfig config)
     {
-        // Enable or disable admin features based on config
-        KillHeadlessButton.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
+        // Show the Admin panel if the admin entry is enabled (user validated as admin)
+        try
+        {
+            // Show admin panel and text if enabled, hide if not
+            HomeTabContent.AdminPanelRef.Visibility = config.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+            HomeTabContent.AdminPanelText.Visibility = config.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+
+            // The Kill Headless button is only visible if this admin allows headless close
+            HomeTabContent.KillHeadlessButtonRef.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
+
+            // Keep the old shortcut property consistent as well
+            KillHeadlessButton.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
+        }
+        catch
+        {
+            // Fallback: if referencing the panel fails for any reason, set the button only
+            KillHeadlessButton.Visibility = config.AllowHeadlessClose ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private void KillServer_Click(object sender, RoutedEventArgs e)

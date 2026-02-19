@@ -9,10 +9,11 @@
              Background="#121212">
     <Grid Margin="5">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />  <!-- Row 0: top toolbar -->
+            <RowDefinition Height="Auto" />  <!-- Row 1: headers (Mod Status / Admin panel) -->
+            <RowDefinition Height="*" />     <!-- Row 2: main two-column content -->
+            <RowDefinition Height="Auto" />  <!-- Row 3: middle placeholder -->
+            <RowDefinition Height="Auto" />  <!-- Row 4: bottom quick status + play button -->
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="2,1,2,1" Height="30">
@@ -23,8 +24,7 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
-                <Button Name="KillHeadlessButton" Content="K" Width="25" Margin="0,0,10,0"
-                        Background="{DynamicResource BrushDanger}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" Visibility="Collapsed"/>
+                <!-- KillHeadlessButton removed from this toolbar; it will live inside the Admin panel next to Mod Status -->
                 <Button Name="RefreshButton" Content="⟳" Width="25" Height="25" Margin="0,0,10,0"
                         Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}"/>
                 <Button Name="CheckUpdatesButton" Content="Check for mod updates" Width="170" Margin="0,0,10,0"
@@ -32,15 +32,25 @@
             </StackPanel>
         </Grid>
 
-        <!-- Mod Status in a rounded container -->
-        <Grid Grid.Row="1" Margin="0,6,0,10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <!-- Header: Mod Status and Admin panel label aligned on same row -->
+        <Grid Grid.Row="1" Margin="0,6,0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="620" /> <!-- Match the width of the mod list below for alignment -->
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Row="0" Text="Mod Status" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,0,6" />
-            <Border Grid.Row="1" Background="{DynamicResource BrushSurface1}" HorizontalAlignment="Left" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="8">
+            <TextBlock Grid.Column="0" Text="Mod Status" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,0,6" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="Admin panel" Name="AdminPanelText" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="12,0,0,6" VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Two-column area: left = mod list, right = admin panel -->
+        <Grid Grid.Row="2" Margin="0,6,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="620" /> <!-- Set a fixed width for the mod list to ensure consistent alignment and spacing; this also allows the admin panel to size to its content -->
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{DynamicResource BrushSurface1}" HorizontalAlignment="Left" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="8">
                 <ListView Name="ModListView" Background="{DynamicResource BrushAppBackground}" HorizontalAlignment="Left" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}">
                     <ListView.Resources>
                         <Style TargetType="ListViewItem">
@@ -85,15 +95,24 @@
                     </ListView.View>
                 </ListView>
             </Border>
+
+            <!-- Admin panel container: header is in the top header row; keep container collapsed at runtime but visible in designer -->
+            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Top" MinHeight="60" MinWidth="200">
+                <Border Name="AdminPanel" Background="{DynamicResource BrushSurface1}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="8">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Name="KillHeadlessButton" Content="Kill Headless" Padding="16,4,16,4" Margin="0,0,10,0" Background="{DynamicResource BrushDanger}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
         </Grid>
 
-        <!-- Middle content placeholder -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <!-- Middle content placeholder (kept for layout consistency) -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <!-- Main content placeholder removed to avoid unresolved 'tabs' symbol; keep an empty container here -->
         </StackPanel>
 
         <!-- Bottom row: Quick Status and Play button -->
-        <Grid Grid.Row="3" Height="Auto" Margin="0,10,0,0">
+        <Grid Grid.Row="4" Height="Auto" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />

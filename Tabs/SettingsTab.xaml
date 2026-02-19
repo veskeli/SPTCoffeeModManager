@@ -63,14 +63,6 @@
                             Foreground="{DynamicResource BrushTextPrimary}"
                             BorderBrush="{DynamicResource BrushBorder}" />
 
-                    <Button x:Name="CancelButton"
-                            Click="CancelButton_Click"
-                            Content="Cancel"
-                            Width="110"
-                            Height="34"
-                            Background="Transparent"
-                            Foreground="{DynamicResource BrushTextPrimary}"
-                            BorderBrush="{DynamicResource BrushBorder}" />
                 </StackPanel>
 
             </StackPanel>
