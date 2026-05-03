@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Interop;
 
 namespace SPTCoffeeModManager;
 
@@ -10,6 +11,13 @@ public partial class UpdateWindow : Window
     public UpdateWindow()
     {
         InitializeComponent();
+
+        // Apply Windows 11 rounded corners if available
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            _ = WindowCornerHelper.TrySetWindowCornerPreference(hwnd, WindowCornerHelper.DwmWindowCorner.Round);
+        };
     }
 
     // Make the window draggable
